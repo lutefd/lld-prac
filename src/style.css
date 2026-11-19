@@ -1490,11 +1490,9 @@ h1 {
 
 /* Splitters keep the editor usable while allowing a custom workspace layout. */
 .workspace {
-  grid-template-columns: clamp(
-      220px,
-      var(--requirements-width, 355px),
-      45%
-    ) 5px minmax(0, 1fr);
+  grid-template-columns:
+    clamp(220px, var(--requirements-width, 355px), 45%)
+    5px minmax(0, 1fr);
 }
 .explorer {
   width: clamp(130px, var(--explorer-width, 195px), 40%);
@@ -1621,5 +1619,61 @@ h1 {
   }
   .console-panel {
     max-height: calc(100% - 180px);
+  }
+}
+
+/* Focus mode keeps only a compact exercise toolbar above the workspace. */
+.focus-mode .app-header {
+  display: none;
+}
+.focus-mode .workspace-toolbar {
+  height: 44px;
+  padding: 0 14px;
+}
+.focus-mode .problem-heading .eyebrow,
+.focus-mode .problem-heading .difficulty,
+.focus-mode .timer,
+.focus-mode .vertical-rule,
+.focus-mode .reset {
+  display: none;
+}
+.focus-mode .problem-heading h1 {
+  font-size: 13px;
+  letter-spacing: -0.2px;
+}
+.focus-mode .problem-heading {
+  gap: 10px;
+}
+.focus-mode .workspace-actions {
+  gap: 8px;
+}
+.focus-mode .language-select {
+  padding: 6px 9px;
+}
+.focus-mode .run-button {
+  padding: 7px 12px;
+}
+.focus-mode .workspace {
+  margin: 0 6px 6px;
+}
+.focus-toggle[aria-pressed="true"] {
+  background: #342b23;
+  color: var(--orange);
+}
+@media (max-width: 600px) {
+  .focus-mode .workspace-toolbar {
+    padding: 0 9px;
+  }
+  .focus-mode .problem-heading h1 {
+    max-width: 140px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .focus-mode .workspace-actions {
+    gap: 5px;
+  }
+  .focus-mode .run-button {
+    padding: 7px 9px;
   }
 }

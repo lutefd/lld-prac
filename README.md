@@ -35,6 +35,8 @@ Open [127.0.0.1:4173](http://127.0.0.1:4173). Both modes also start the API on p
 - Passing the cumulative checks unlocks the next level. Later-level test files are excluded from the execution snapshot until their level is selected.
 - Drag the dividers to resize requirements, the file explorer, and the console. Each pane can be collapsed and restored; sizes and visibility are remembered in this browser. Focus a divider and use arrow keys to resize (Shift for larger steps), or double-click it to reset the size. Run tests automatically reopens a collapsed console. The practice timer is optional and can be paused.
 
+Use the expand icon next to the language selector to enter **focus mode**. It hides the branding bar and shrinks the toolbar while keeping the language selector and Run tests available. The same button exits focus mode; this preference is remembered too.
+
 Drafts and unlocked levels are saved in browser local storage separately for each exercise and language. Runtime workspace files live under ignored `.practice/workspaces/`. Reset affects only the selected exercise and language. Browser data clearing removes drafts and progress.
 
 The prompts use Go-style contracts as a common specification. Python and TypeScript starters retain PascalCase method and constructor factory names; follow their supplied type signatures and tests for return representations.

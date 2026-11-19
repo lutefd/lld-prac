@@ -121,3 +121,41 @@ test("all panes collapse, stay collapsed after reload, and can be restored", asy
   await expect(page.locator(".console-content")).toBeVisible();
   await expect(page.locator(".editor-status")).toBeInViewport();
 });
+
+test("focus mode frees vertical space, preserves workspace controls, and persists", async ({
+  page,
+}) => {
+  const workspace = page.locator(".workspace");
+  const before = await dimensions(workspace);
+  await page
+    .getByRole("button", { name: "Enter focus mode", exact: true })
+    .click();
+  await expect(page.locator(".app-header")).not.toBeVisible();
+  await expect(page.locator(".requirements-panel")).toBeVisible();
+  await expect(page.locator(".monaco-editor")).toBeVisible();
+  await expect(page.getByLabel("Programming language")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Run tests", exact: false }),
+  ).toBeVisible();
+  await expect
+    .poll(async () => (await dimensions(workspace)).height)
+    .toBeGreaterThanOrEqual(before.height + 90);
+  expect((await dimensions(workspace)).y).toBeLessThan(before.y);
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "Exit focus mode", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".app-header")).not.toBeVisible();
+  await expect(page.locator(".requirements-panel")).toBeVisible();
+  await expect(page.locator(".monaco-editor")).toBeVisible();
+  await page
+    .getByRole("button", { name: "Exit focus mode", exact: true })
+    .click();
+  await expect(page.locator(".app-header")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Open exercise library", exact: true }),
+  ).toBeVisible();
+  await expect
+    .poll(async () => (await dimensions(workspace)).height)
+    .toBeCloseTo(before.height, 0);
+});

@@ -17,6 +17,8 @@ import {
   LockKeyhole,
   PanelLeftClose,
   PanelBottomClose,
+  Maximize2,
+  Minimize2,
   Play,
   RotateCcw,
   Search,
@@ -150,6 +152,10 @@ function Workspace({ problems }: { problems: Problem[] }) {
       console: 235,
     }),
   );
+  const [focusMode, setFocusMode] = useState(() =>
+    read("workbench.focus", false),
+  );
+  useEffect(() => write("workbench.focus", focusMode), [focusMode]);
   const workspaceRef = useRef<HTMLElement>(null);
   const codingRef = useRef<HTMLElement>(null);
   const codingBodyRef = useRef<HTMLDivElement>(null);
@@ -323,7 +329,7 @@ function Workspace({ problems }: { problems: Problem[] }) {
         .includes(query.toLowerCase()),
   );
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${focusMode ? "focus-mode" : ""}`}>
       <header className="app-header">
         <button
           className="brand"
@@ -407,6 +413,14 @@ function Workspace({ problems }: { problems: Problem[] }) {
             </select>
             <ChevronDown size={13} />
           </label>
+          <button
+            className="icon-button focus-toggle"
+            title={focusMode ? "Exit focus mode" : "Enter focus mode"}
+            aria-pressed={focusMode}
+            onClick={() => setFocusMode((value) => !value)}
+          >
+            {focusMode ? <Minimize2 size={17} /> : <Maximize2 size={17} />}
+          </button>
           <button
             className="icon-button reset"
             title="Reset this language's solution"
