@@ -1089,6 +1089,10 @@ h1 {
 .exercise-card.current {
   border-color: #9b6c48;
 }
+.exercise-card[aria-disabled="true"] {
+  cursor: default;
+  opacity: 0.42;
+}
 .card-top {
   display: flex;
   justify-content: space-between;

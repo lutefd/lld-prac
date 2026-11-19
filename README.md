@@ -27,8 +27,9 @@ Open [127.0.0.1:4173](http://127.0.0.1:4173). Both modes also start the API on p
 
 ## Practice
 
-- Choose an exercise from the **workbench.** logo or back arrow. Filter by ride-hailing, banking, or fundamentals.
-- Open **Practice roadmap** for a recommended order, language-specific progress, and a shortcut to the next unfinished exercise. Start with the stack and queue, use vending machine as the medium bridge, then dependency planner as the hard bridge. The roadmap is also available at `/#roadmap` and from the exercise library.
+- The app opens on the **Practice roadmap**, with a recommended order, language-specific progress, and a shortcut to the next unfinished exercise. Start with the stack and queue, use vending machine as the medium bridge, then dependency planner as the hard bridge. Return to the roadmap at `/` from any exercise.
+- Each exercise has a bookmarkable URL, such as `/practice/ride-dispatch`. Roadmap and library links can be copied or opened in new tabs. Reloading or using browser back/forward preserves the exercise selected by the URL; language, drafts, and progress stay saved locally.
+- Open the exercise library from the **workbench.** logo or back arrow. Filter by ride-hailing, banking, or fundamentals.
 - Implement the current level in `implementation.go`, `implementation.py`, or `implementation.ts`.
 - Use normal language completions, hover information, signatures, definitions, and diagnostics from gopls, Pyright, or the TypeScript language server. Inline AI suggestions are disabled.
 - Use **+ New file** in Explorer to create additional `.go`, `.py`, or `.ts` source files, including paths such as `helpers/pricing.go`. Switch files in Explorer; extra files are saved with the selected exercise and language.

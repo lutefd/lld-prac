@@ -3,7 +3,7 @@ import { test, expect } from "@playwright/test";
 test("workspace runs real Go checks, personal tests, and restores drafts", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/practice/ride-dispatch");
   await expect(
     page.getByRole("heading", { name: "Ride dispatch", exact: true }),
   ).toBeVisible();
@@ -83,7 +83,7 @@ for (const [language, expected] of [
   test(`${language} runs level checks and editable sandbox tests`, async ({
     page,
   }) => {
-    await page.goto("/");
+    await page.goto("/practice/ride-dispatch");
     await expect(
       page.getByRole("button", { name: "Run tests", exact: false }),
     ).toBeEnabled();

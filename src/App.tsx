@@ -31,6 +31,7 @@ import {
 import Editor from "./Editor";
 import PanelDivider from "./PanelDivider";
 import Roadmap from "./Roadmap";
+import { followLink, practiceUrl } from "./navigation";
 import type { CSSProperties } from "react";
 
 type Language = "go" | "python" | "typescript";
@@ -97,11 +98,11 @@ async function api<T = unknown>(path: string, body?: unknown): Promise<T> {
   return data as T;
 }
 export default function App() {
-  const [route, setRoute] = useState(() => location.hash);
+  const [route, setRoute] = useState(() => location.pathname);
   useEffect(() => {
-    const navigate = () => setRoute(location.hash);
-    window.addEventListener("hashchange", navigate);
-    return () => window.removeEventListener("hashchange", navigate);
+    const navigate = () => setRoute(location.pathname);
+    window.addEventListener("popstate", navigate);
+    return () => window.removeEventListener("popstate", navigate);
   }, []);
   const [problems, setProblems] = useState<Problem[]>([]),
     [error, setError] = useState("");
@@ -129,17 +130,39 @@ export default function App() {
         )}
       </div>
     );
-  return route === "#roadmap" ? (
-    <Roadmap problems={problems} />
-  ) : (
-    <Workspace problems={problems} />
-  );
+  const pathname = route.replace(/\/+$/, "") || "/";
+  if (pathname === "/" || pathname === "/roadmap")
+    return <Roadmap problems={problems} />;
+  let problemId = "";
+  try {
+    const match = pathname.match(/^\/practice\/([^/]+)$/);
+    if (match) problemId = decodeURIComponent(match[1]);
+  } catch {}
+  const problem = problems.find((p) => p.id === problemId);
+  if (!problem)
+    return (
+      <main className="roadmap-page">
+        <header className="roadmap-intro">
+          <h1>Exercise not found</h1>
+          <p>
+            This URL does not match an exercise. Choose your next case from the
+            roadmap.
+          </p>
+          <a className="roadmap-link" href="/" onClick={followLink}>
+            Practice roadmap <ArrowUpRight size={14} />
+          </a>
+        </header>
+      </main>
+    );
+  return <Workspace key={problem.id} problems={problems} problem={problem} />;
 }
-function Workspace({ problems }: { problems: Problem[] }) {
-  const [problemId, setProblemId] = useState(() =>
-    read("workbench.problem", problems[0].id),
-  );
-  const problem = problems.find((p) => p.id === problemId) || problems[0];
+function Workspace({
+  problems,
+  problem,
+}: {
+  problems: Problem[];
+  problem: Problem;
+}) {
   const [language, setLanguage] = useState<Language>(() =>
     read("workbench.language", "go"),
   );
@@ -416,7 +439,7 @@ function Workspace({ problems }: { problems: Problem[] }) {
           Practice <ChevronRight size={13} /> <span>Low-level design</span>
         </button>
         <div className="header-spacer" />
-        <a className="roadmap-link" href="#roadmap">
+        <a className="roadmap-link" href="/" onClick={followLink}>
           Practice roadmap <ArrowUpRight size={14} />
         </a>
         <span className="distraction-free">
@@ -1026,7 +1049,8 @@ function Workspace({ problems }: { problems: Problem[] }) {
                 </p>
                 <a
                   className="roadmap-link library-roadmap-link"
-                  href="#roadmap"
+                  href="/"
+                  onClick={followLink}
                 >
                   Follow the practice roadmap <ArrowUpRight size={14} />
                 </a>
@@ -1066,12 +1090,17 @@ function Workspace({ problems }: { problems: Problem[] }) {
             </div>
             <div className="exercise-grid">
               {filtered.map((p) => (
-                <button
+                <a
                   className={`exercise-card ${p.id === problem.id ? "current" : ""}`}
                   key={p.id}
-                  disabled={running}
-                  onClick={() => {
-                    setProblemId(p.id);
+                  href={practiceUrl(p.id)}
+                  aria-disabled={running || undefined}
+                  onClick={(event) => {
+                    if (running) {
+                      event.preventDefault();
+                      return;
+                    }
+                    followLink(event);
                     setLibrary(false);
                   }}
                 >
@@ -1094,7 +1123,7 @@ function Workspace({ problems }: { problems: Problem[] }) {
                     </span>
                     <ArrowUpRight size={17} />
                   </div>
-                </button>
+                </a>
               ))}
               {!filtered.length && (
                 <p className="no-results">No exercises match your search.</p>

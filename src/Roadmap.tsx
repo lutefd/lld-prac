@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ArrowLeft, ArrowUpRight, Check, Code2 } from "lucide-react";
 import { roadmap } from "../shared/roadmap";
 import "./roadmap.css";
+import { followLink, practiceUrl } from "./navigation";
 
 type RoadmapProblem = {
   id: string;
@@ -37,19 +38,19 @@ export default function Roadmap({ problems }: { problems: RoadmapProblem[] }) {
       const problem = problems.find((p) => p.id === id);
       return problem && progress(problem) < problem.levels.length;
     });
-  const open = (id: string) => {
-    try {
-      localStorage.setItem("workbench.problem", JSON.stringify(id));
-      localStorage.setItem("workbench.language", JSON.stringify(language));
-    } catch {}
-    location.hash = "";
-  };
+  const lastProblem = problems.find(
+    (p) => p.id === stored("workbench.problem", ""),
+  );
   let position = 0;
   return (
     <main className="roadmap-page">
       <nav className="roadmap-nav" aria-label="Roadmap navigation">
-        <a href="#">
-          <ArrowLeft size={16} /> Back to practice
+        <a
+          href={practiceUrl(lastProblem?.id || next?.[0] || problems[0].id)}
+          onClick={followLink}
+        >
+          <ArrowLeft size={16} />{" "}
+          {lastProblem ? "Resume practice" : "Start practicing"}
         </a>
         <span>
           <Code2 size={19} /> workbench.
@@ -88,9 +89,13 @@ export default function Roadmap({ problems }: { problems: RoadmapProblem[] }) {
             {completed} of {problems.length} exercises completed
           </span>
           {next && (
-            <button className="primary" onClick={() => open(next[0])}>
+            <a
+              className="primary"
+              href={practiceUrl(next[0])}
+              onClick={followLink}
+            >
               Continue the path <ArrowUpRight size={16} />
-            </button>
+            </a>
           )}
         </div>
       </header>
@@ -125,7 +130,7 @@ export default function Roadmap({ problems }: { problems: RoadmapProblem[] }) {
               const passed = progress(problem);
               return (
                 <li key={id}>
-                  <button onClick={() => open(id)}>
+                  <a href={practiceUrl(id)} onClick={followLink}>
                     <span
                       className={`roadmap-step ${passed === problem.levels.length ? "complete" : ""}`}
                     >
@@ -148,7 +153,7 @@ export default function Roadmap({ problems }: { problems: RoadmapProblem[] }) {
                       {passed}/{problem.levels.length} levels
                     </span>
                     <ArrowUpRight size={16} />
-                  </button>
+                  </a>
                 </li>
               );
             })}

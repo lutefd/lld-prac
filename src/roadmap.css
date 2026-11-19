@@ -62,7 +62,7 @@
 .roadmap-controls > span {
   color: var(--muted);
 }
-.roadmap-controls button {
+.roadmap-controls .primary {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -119,7 +119,7 @@
 .roadmap-exercises li + li {
   border-top: 1px solid var(--line);
 }
-.roadmap-exercises button {
+.roadmap-exercises a {
   width: 100%;
   display: flex;
   align-items: center;
@@ -128,7 +128,7 @@
   padding: 20px;
   background: var(--surface);
 }
-.roadmap-exercises button:hover {
+.roadmap-exercises a:hover {
   background: #22272e;
 }
 .roadmap-step {
@@ -173,10 +173,10 @@
   .roadmap-intro {
     padding-top: 30px;
   }
-  .roadmap-controls button {
+  .roadmap-controls .primary {
     margin-left: 0;
   }
-  .roadmap-exercises button {
+  .roadmap-exercises a {
     padding: 16px 12px;
     gap: 10px;
     flex-wrap: wrap;

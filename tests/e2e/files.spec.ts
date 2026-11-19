@@ -18,7 +18,7 @@ async function replaceCode(page: Page, content: string) {
 }
 
 test.beforeEach(async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/practice/ride-dispatch");
   await expect(page.locator(".monaco-editor")).toBeVisible();
 });
 
