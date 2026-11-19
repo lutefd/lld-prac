@@ -1740,3 +1740,303 @@ h1 {
     display: inline-flex;
   }
 }
+
+/* A shared light palette keeps the workbench and native controls in sync. */
+:root {
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  color: #29333f;
+  background: #f3f5f7;
+  --surface: #fff;
+  --muted: #5d6977;
+  --line: #d8dee5;
+  --orange: #a9501d;
+  --green: #34744e;
+}
+:root[data-theme="light"]
+  :is(
+    .app-header,
+    .requirements-panel,
+    .explorer,
+    .console-heading,
+    .console-collapsed,
+    .library-modal,
+    .confirm-modal
+  ) {
+  background: #fff;
+}
+:root[data-theme="light"]
+  :is(
+    .coding-area,
+    .active-tab,
+    .mobile-file-picker,
+    .console-panel,
+    .search-input,
+    .create-file-modal input
+  ) {
+  background: #fff;
+  color: #29333f;
+}
+:root[data-theme="light"]
+  :is(
+    .editor-tabs,
+    .editor-status,
+    .example,
+    .exercise-card,
+    .language-select,
+    .secondary,
+    .terminal-icon
+  ) {
+  background: #f3f5f7;
+  border-color: var(--line);
+  color: #3e4c5b;
+}
+:root[data-theme="light"]
+  :is(
+    h1,
+    .requirements-scroll h2,
+    .requirements-scroll h3,
+    .library-header h2,
+    .exercise-card h3,
+    .active-tab,
+    .console-empty strong,
+    .explorer-tip strong,
+    .timer > span:first-of-type,
+    .console-tabs > button.selected
+  ) {
+  color: #25313f;
+}
+:root[data-theme="light"]
+  :is(
+    .breadcrumb,
+    .breadcrumb > span,
+    .distraction-free,
+    .github-link,
+    .icon-button,
+    .back,
+    .eyebrow,
+    .eyebrow > span,
+    .timer,
+    .timer-label,
+    .language-select select,
+    .panel-heading,
+    .panel-heading > span svg,
+    .exercise-meta,
+    .requirements-scroll p,
+    .progress-label,
+    .progress-label > span:last-child,
+    .requirements-list li,
+    .requirement-index,
+    .example span,
+    .exercise-details summary,
+    .requirements-footer,
+    .explorer .panel-heading,
+    .folder-label,
+    .file,
+    .explorer-tip,
+    .explorer-tip > span,
+    .save-status,
+    .editor-loading,
+    .console-tabs > button,
+    .console-controls,
+    .console-command,
+    .console-empty,
+    .console-empty span,
+    .console-empty kbd,
+    .editor-status,
+    .library-header p,
+    .library-tools > span,
+    .search-input,
+    .category-tabs > button,
+    .card-number,
+    .exercise-card p,
+    .card-footer,
+    .card-footer > span > span,
+    .library-footer,
+    .no-results,
+    .confirm-modal p,
+    .create-file-modal label,
+    .console-collapsed button
+  ) {
+  color: var(--muted);
+}
+:root[data-theme="light"]
+  :is(.raw-output, .test-results pre, .example pre, .search-input input) {
+  color: #35475a;
+}
+:root[data-theme="light"]
+  :is(.search-input input::placeholder, .create-file-modal input::placeholder) {
+  color: #6d7886;
+}
+:root[data-theme="light"]
+  :is(
+    .back,
+    .language-select,
+    .requirement-index,
+    .example,
+    .example > div + div,
+    .exercise-details,
+    .explorer-tip,
+    .console-heading,
+    .console-command,
+    .console-empty kbd,
+    .editor-status,
+    .library-modal,
+    .search-input,
+    .category-tabs,
+    .exercise-card,
+    .card-footer,
+    .library-footer,
+    .confirm-modal,
+    .create-file-modal input
+  ) {
+  border-color: var(--line);
+}
+:root[data-theme="light"] button:hover:not(:disabled) {
+  color: #182331;
+}
+:root[data-theme="light"]
+  :is(.icon-button:hover, .file:hover:not(.active), .exercise-card:hover) {
+  background: #e8edf2;
+}
+:root[data-theme="light"] .language-select select option {
+  background: #fff;
+  color: #29333f;
+}
+:root[data-theme="light"] .primary {
+  color: #fff;
+  background: #a9501d;
+  border-color: #a9501d;
+}
+:root[data-theme="light"] .primary:hover:not(:disabled) {
+  color: #fff;
+  background: #8d4015;
+}
+:root[data-theme="light"] .brand-symbol {
+  border-color: #d5ab8e;
+}
+:root[data-theme="light"] .local-badge {
+  color: #34744e;
+  background: #e6f0e9;
+}
+:root[data-theme="light"] .difficulty {
+  color: #805c19;
+  background: #fff5dd;
+  border-color: #dcc78e;
+}
+:root[data-theme="light"] .difficulty.easy {
+  color: #34744e;
+  background: #eaf4ed;
+  border-color: #b6d3bf;
+}
+:root[data-theme="light"] .difficulty.hard {
+  color: #a13f37;
+  background: #fff0ed;
+  border-color: #e4b7b0;
+}
+:root[data-theme="light"] .topic-tag {
+  color: #526172;
+  background: #edf1f5;
+  border-color: var(--line);
+}
+:root[data-theme="light"] .level-navigation > button {
+  color: #526172;
+  background: #f0f3f6;
+  border-color: var(--line);
+}
+:root[data-theme="light"] .level-circle {
+  border-color: #9eaab8;
+}
+:root[data-theme="light"]
+  :is(
+    .level-navigation > button.selected,
+    .category-tabs > button.selected,
+    .focus-toggle[aria-pressed="true"],
+    .file.active
+  ) {
+  color: #884119;
+  background: #fff0e5;
+  border-color: #d5ab8e;
+}
+:root[data-theme="light"] .selected .level-circle {
+  border-color: #b3734b;
+}
+:root[data-theme="light"]
+  :is(.level-navigation > button.completed, .result-banner.pass) {
+  color: #34744e;
+  background: #eaf4ed;
+  border-color: #b6d3bf;
+}
+:root[data-theme="light"] :is(.practice-note, .language-note) {
+  color: #8a5624;
+  background: #fff5e7;
+  border-color: #e0c8a6;
+}
+:root[data-theme="light"] .practice-note strong {
+  color: #80501f;
+}
+:root[data-theme="light"] .practice-note p {
+  color: #79644e;
+}
+:root[data-theme="light"]
+  :is(
+    .section-number,
+    .card-category,
+    .card-footer > svg,
+    .library-header .eyebrow,
+    .library-footer svg,
+    .explorer-tip > svg
+  ) {
+  color: #94613d;
+}
+:root[data-theme="light"]
+  :is(.file .source-file, .active-tab > svg:first-child) {
+  color: #277a82;
+}
+:root[data-theme="light"] .file .test-file {
+  color: #926a20;
+}
+:root[data-theme="light"] .terminal-icon {
+  color: #607185;
+}
+:root[data-theme="light"]
+  :is(
+    .result-banner.fail,
+    .error-output,
+    .editor-loading p,
+    .create-file-modal .file-error,
+    .console-collapsed .fail
+  ) {
+  color: #a13f37;
+}
+:root[data-theme="light"] .result-banner.fail {
+  background: #fff0ed;
+  border-color: #e4b7b0;
+}
+:root[data-theme="light"] .result-banner > span {
+  color: #5d6977;
+}
+:root[data-theme="light"] .result-banner > button {
+  color: #2c693f;
+}
+:root[data-theme="light"] .panel-divider {
+  background: #e4e9ef;
+}
+:root[data-theme="light"] .panel-divider > span {
+  background: #8b98a8;
+}
+:root[data-theme="light"] .modal-backdrop {
+  background: #26354466;
+}
+:root[data-theme="light"] .library-modal {
+  box-shadow: 0 25px 100px #25364a33;
+}
+:root[data-theme="light"] .exercise-card.current {
+  border-color: #b3734b;
+}
+:root[data-theme="light"]
+  :is(.requirements-scroll, .console-content, .exercise-grid) {
+  scrollbar-color: #b6c1cd transparent;
+}

@@ -33,6 +33,8 @@ import PanelDivider from "./PanelDivider";
 import Roadmap from "./Roadmap";
 import { followLink, practiceUrl } from "./navigation";
 import type { CSSProperties } from "react";
+import { usePreferences, PreferencesControls } from "./preferences";
+import { localizeProblem } from "./problemTranslations";
 
 type Language = "go" | "python" | "typescript";
 type File = {
@@ -98,33 +100,38 @@ async function api<T = unknown>(path: string, body?: unknown): Promise<T> {
   return data as T;
 }
 export default function App() {
+  const { t, locale } = usePreferences();
   const [route, setRoute] = useState(() => location.pathname);
   useEffect(() => {
     const navigate = () => setRoute(location.pathname);
     window.addEventListener("popstate", navigate);
     return () => window.removeEventListener("popstate", navigate);
   }, []);
-  const [problems, setProblems] = useState<Problem[]>([]),
+  const [rawProblems, setProblems] = useState<Problem[]>([]),
     [error, setError] = useState("");
   useEffect(() => {
     api<{ problems: Problem[] }>("/problems")
       .then((data) => setProblems(data.problems))
       .catch((e) => setError(e.message));
   }, []);
+  const problems = rawProblems.map((problem) =>
+    localizeProblem(problem, locale),
+  );
   if (!problems.length)
     return (
       <div className="editor-loading" style={{ height: "100dvh" }}>
+        <PreferencesControls />
         <Code2 size={32} />
         <strong>
           {error
-            ? "Couldn’t connect to the practice server"
-            : "Opening your workbench…"}
+            ? t("Couldn’t connect to the practice server")
+            : t("Opening your workbench…")}
         </strong>
         {error && (
           <>
-            <p>{error}</p>
+            <p>{t(error)}</p>
             <button className="secondary" onClick={() => location.reload()}>
-              Reconnect
+              {t("Reconnect")}
             </button>
           </>
         )}
@@ -142,14 +149,16 @@ export default function App() {
   if (!problem)
     return (
       <main className="roadmap-page">
+        <PreferencesControls />
         <header className="roadmap-intro">
-          <h1>Exercise not found</h1>
+          <h1>{t("Exercise not found")}</h1>
           <p>
-            This URL does not match an exercise. Choose your next case from the
-            roadmap.
+            {t(
+              "This URL does not match an exercise. Choose your next case from the roadmap.",
+            )}
           </p>
           <a className="roadmap-link" href="/" onClick={followLink}>
-            Practice roadmap <ArrowUpRight size={14} />
+            {t("Practice roadmap")} <ArrowUpRight size={14} />
           </a>
         </header>
       </main>
@@ -163,6 +172,7 @@ function Workspace({
   problems: Problem[];
   problem: Problem;
 }) {
+  const { t } = usePreferences();
   const [language, setLanguage] = useState<Language>(() =>
     read("workbench.language", "go"),
   );
@@ -421,7 +431,7 @@ function Workspace({
         <button
           className="brand"
           onClick={() => setLibrary(true)}
-          aria-label="Open exercise library"
+          aria-label={t("Open exercise library")}
         >
           <span className="brand-symbol">
             <Code2 size={22} />
@@ -431,20 +441,22 @@ function Workspace({
           </span>
           <span className="local-badge">
             <span />
-            LOCAL
+            {t("LOCAL")}
           </span>
         </button>
         <div className="header-divider" />
         <button className="breadcrumb" onClick={() => setLibrary(true)}>
-          Practice <ChevronRight size={13} /> <span>Low-level design</span>
+          {t("Practice")} <ChevronRight size={13} />{" "}
+          <span>{t("Low-level design")}</span>
         </button>
         <div className="header-spacer" />
+        <PreferencesControls />
         <a className="roadmap-link" href="/" onClick={followLink}>
-          Practice roadmap <ArrowUpRight size={14} />
+          {t("Practice roadmap")} <ArrowUpRight size={14} />
         </a>
         <span className="distraction-free">
           <span />
-          No AI. Just you and the code.
+          {t("No AI. Just you and the code.")}
         </span>
         <a
           className="github-link"
@@ -460,37 +472,37 @@ function Workspace({
           <button
             className="icon-button back"
             onClick={() => setLibrary(true)}
-            title="Exercise library"
+            title={t("Exercise library")}
           >
             <ArrowLeft size={18} />
           </button>
           <div>
             <div className="eyebrow">
-              {problem.category} <span>/</span> LLD PRACTICE
+              {t(problem.category)} <span>/</span> {t("LLD PRACTICE")}
             </div>
             <h1>{problem.title}</h1>
           </div>
           <span className={`difficulty ${problem.difficulty.toLowerCase()}`}>
-            {problem.difficulty}
+            {t(problem.difficulty)}
           </span>
         </div>
         <div className="workspace-actions">
           <button
             className={`timer ${timer ? "active" : ""}`}
             onClick={() => setTimer((t) => !t)}
-            title="Start or pause practice timer"
+            title={t("Start or pause practice timer")}
           >
             <Clock3 size={15} />
             <span>{elapsed}</span>
             <span className="timer-label">
-              {timer ? "Pause" : "Start timer"}
+              {timer ? t("Pause") : t("Start timer")}
             </span>
           </button>
           <span className="vertical-rule" />
           <label className="language-select">
             <Code2 size={16} />
             <select
-              aria-label="Programming language"
+              aria-label={t("Programming language")}
               value={language}
               disabled={running}
               onChange={(e) => setLanguage(e.target.value as Language)}
@@ -505,7 +517,7 @@ function Workspace({
           </label>
           <button
             className="icon-button focus-toggle"
-            title={focusMode ? "Exit focus mode" : "Enter focus mode"}
+            title={focusMode ? t("Exit focus mode") : t("Enter focus mode")}
             aria-pressed={focusMode}
             onClick={() => setFocusMode((value) => !value)}
           >
@@ -513,7 +525,7 @@ function Workspace({
           </button>
           <button
             className="icon-button reset"
-            title="Reset this language's solution"
+            title={t("Reset this language's solution")}
             onClick={() => setResetConfirm(true)}
             disabled={!session || running}
           >
@@ -529,7 +541,7 @@ function Workspace({
             ) : (
               <Play size={14} fill="currentColor" />
             )}
-            {running ? "Running…" : "Run tests"}
+            {running ? t("Running…") : t("Run tests")}
             <kbd>⌘ ↵</kbd>
           </button>
         </div>
@@ -550,11 +562,11 @@ function Workspace({
             <div className="panel-heading">
               <span>
                 <BookOpen size={16} />
-                Requirements
+                {t("Requirements")}
               </span>
               <button
                 className="icon-button"
-                title="Collapse requirements"
+                title={t("Collapse requirements")}
                 onClick={() => setRequirements(false)}
               >
                 <PanelLeftClose size={16} />
@@ -567,10 +579,10 @@ function Workspace({
                   <Clock3 size={12} /> {problem.duration} min
                 </span>
               </div>
-              <h2>The challenge</h2>
+              <h2>{t("The challenge")}</h2>
               <p className="summary">{problem.summary}</p>
               <div className="progress-label">
-                <span>YOUR PROGRESSION</span>
+                <span>{t("YOUR PROGRESSION")}</span>
                 <span>
                   {Math.min(unlocked - 1, problem.levels.length)} /{" "}
                   {problem.levels.length}
@@ -580,7 +592,7 @@ function Workspace({
                 {problem.levels.map((l, i) => (
                   <button
                     key={l.title}
-                    aria-label={`Level ${i + 1}`}
+                    aria-label={t("Level {level}", { level: i + 1 })}
                     disabled={i + 1 > unlocked || running}
                     className={
                       level === i + 1
@@ -603,7 +615,9 @@ function Workspace({
                         i + 1
                       )}
                     </span>
-                    <span>Level {i + 1}</span>
+                    <span>
+                      {t("Level")} {i + 1}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -614,12 +628,13 @@ function Workspace({
               <p>{selectedLevel.description}</p>
               {language !== "go" && (
                 <div className="language-note">
-                  The contracts use a shared Go-style notation. Keep PascalCase
-                  API names and follow your {languageNames[language]} starter
-                  for types and return values.
+                  {t(
+                    "The contracts use a shared Go-style notation. Keep PascalCase API names and follow your {language} starter for types and return values.",
+                    { language: languageNames[language] },
+                  )}
                 </div>
               )}
-              <h3>What to build</h3>
+              <h3>{t("What to build")}</h3>
               <ul className="requirements-list">
                 {selectedLevel.requirements.map((r, i) => (
                   <li key={r}>
@@ -628,15 +643,15 @@ function Workspace({
                   </li>
                 ))}
               </ul>
-              <h3>Examples</h3>
+              <h3>{t("Examples")}</h3>
               {selectedLevel.examples.map((example, i) => (
                 <div className="example" key={i}>
                   <div>
-                    <span>INPUT</span>
+                    <span>{t("INPUT")}</span>
                     <pre>{example.input}</pre>
                   </div>
                   <div>
-                    <span>OUTPUT</span>
+                    <span>{t("OUTPUT")}</span>
                     <pre>{example.output}</pre>
                   </div>
                 </div>
@@ -644,34 +659,34 @@ function Workspace({
               <div className="practice-note">
                 <Zap size={16} />
                 <div>
-                  <strong>Build it one level at a time.</strong>
+                  <strong>{t("Build it one level at a time.")}</strong>
                   <p>
-                    Pass the current level to unlock the next. Your code carries
-                    forward.
+                    {t(
+                      "Pass the current level to unlock the next. Your code carries forward.",
+                    )}
                   </p>
                 </div>
               </div>
               <details className="exercise-details">
                 <summary>
-                  About this exercise <ChevronDown size={13} />
+                  {t("About this exercise")} <ChevronDown size={13} />
                 </summary>
                 <p>
-                  Original practice scenario inspired by common ride-hailing and
-                  fintech domains. These are not official company interview
-                  questions. Monetary amounts use integer cents; time-based
-                  exercises use explicit timestamps.
+                  {t(
+                    "Original practice scenario inspired by common ride-hailing and fintech domains. These are not official company interview questions. Monetary amounts use integer cents; time-based exercises use explicit timestamps.",
+                  )}
                 </p>
               </details>
             </div>
             <div className="requirements-footer">
               <span className="dot" />
-              Progress and drafts saved on this browser
+              {t("Progress and drafts saved on this browser")}
             </div>
           </aside>
         )}
         {requirements && (
           <PanelDivider
-            label="Resize requirements"
+            label={t("Resize requirements")}
             orientation="vertical"
             value={panelSizes.requirements}
             min={220}
@@ -696,11 +711,11 @@ function Workspace({
             {explorer && (
               <aside className="explorer">
                 <div className="panel-heading">
-                  <span>EXPLORER</span>
+                  <span>{t("EXPLORER")}</span>
                   <div className="explorer-actions">
                     <button
                       className="icon-button"
-                      title="New file"
+                      title={t("New file")}
                       onClick={openNewFile}
                       disabled={!session || running}
                     >
@@ -708,7 +723,7 @@ function Workspace({
                     </button>
                     <button
                       className="icon-button"
-                      title="Collapse file explorer"
+                      title={t("Collapse file explorer")}
                       onClick={() => setExplorer(false)}
                     >
                       <PanelLeftClose size={14} />
@@ -742,18 +757,19 @@ function Workspace({
                 </div>
                 <div className="explorer-tip">
                   <FlaskConical size={17} />
-                  <strong>Make it your sandbox.</strong>
+                  <strong>{t("Make it your sandbox.")}</strong>
                   <p>
-                    Add source files or your own test files with the + button.
-                    Run them alongside the level checks.
+                    {t(
+                      "Add source files or your own test files with the + button. Run them alongside the level checks.",
+                    )}
                   </p>
-                  <span>Hidden checks run with your tests.</span>
+                  <span>{t("Hidden checks run with your tests.")}</span>
                 </div>
               </aside>
             )}
             {explorer && (
               <PanelDivider
-                label="Resize file explorer"
+                label={t("Resize file explorer")}
                 orientation="vertical"
                 value={panelSizes.explorer}
                 min={130}
@@ -775,7 +791,7 @@ function Workspace({
                 {!requirements && (
                   <button
                     className="icon-button restore"
-                    title="Show requirements"
+                    title={t("Show requirements")}
                     onClick={() => setRequirements(true)}
                   >
                     <BookOpen size={17} />
@@ -784,7 +800,7 @@ function Workspace({
                 {!explorer && (
                   <button
                     className="icon-button restore"
-                    title="Show file explorer"
+                    title={t("Show file explorer")}
                     onClick={() => setExplorer(true)}
                   >
                     <Files size={16} />
@@ -792,26 +808,26 @@ function Workspace({
                 )}
                 <select
                   className="mobile-file-picker"
-                  aria-label="Open file"
+                  aria-label={t("Open file")}
                   value={activePath}
                   onChange={(e) => setActivePath(e.target.value)}
                 >
                   {files.map((f) => (
                     <option key={f.path} value={f.path}>
                       {f.path}
-                      {f.readOnly ? " (read only)" : ""}
+                      {f.readOnly ? t(" (read only)") : ""}
                     </option>
                   ))}
                 </select>
                 <div className="active-tab">
                   <FileCode2 size={14} />
-                  {activePath || "Loading workspace…"}
+                  {activePath || t("Loading workspace…")}
                   {activeFile?.readOnly && <LockKeyhole size={11} />}
                 </div>
                 <div className="tab-spacer" />
                 <button
                   className="icon-button new-file-shortcut"
-                  title="New file"
+                  title={t("New file")}
                   onClick={openNewFile}
                   disabled={!session || running}
                 >
@@ -823,7 +839,7 @@ function Workspace({
                   ) : (
                     <span className="unsaved-dot" />
                   )}
-                  {saved ? "Saved" : "Saving…"}
+                  {saved ? t("Saved") : t("Saving…")}
                 </span>
               </div>
               {session ? (
@@ -840,19 +856,19 @@ function Workspace({
                   {error ? (
                     <>
                       <Terminal size={32} />
-                      <strong>Couldn’t open the workspace</strong>
-                      <p>{error}</p>
+                      <strong>{t("Couldn’t open the workspace")}</strong>
+                      <p>{t(error)}</p>
                       <button
                         className="secondary"
                         onClick={() => setRevision((r) => r + 1)}
                       >
-                        Try again
+                        {t("Try again")}
                       </button>
                     </>
                   ) : (
                     <>
                       <LoaderCircle size={28} className="spin" />
-                      <span>Preparing your workspace…</span>
+                      <span>{t("Preparing your workspace…")}</span>
                     </>
                   )}
                 </div>
@@ -862,7 +878,7 @@ function Workspace({
           {consoleOpen ? (
             <>
               <PanelDivider
-                label="Resize console"
+                label={t("Resize console")}
                 orientation="horizontal"
                 value={panelSizes.console}
                 min={120}
@@ -872,7 +888,7 @@ function Workspace({
                 onChange={(value) => sizePanel("console", value)}
                 onReset={() => sizePanel("console", 235)}
               />
-              <section className="console-panel" aria-label="Test output">
+              <section className="console-panel" aria-label={t("Test output")}>
                 <div className="console-heading">
                   <div className="console-tabs">
                     <button
@@ -880,14 +896,14 @@ function Workspace({
                       onClick={() => setConsoleTab("console")}
                     >
                       <SquareTerminal size={14} />
-                      Console
+                      {t("Console")}
                     </button>
                     <button
                       className={consoleTab === "results" ? "selected" : ""}
                       onClick={() => setConsoleTab("results")}
                     >
                       <FlaskConical size={14} />
-                      Test results
+                      {t("Test results")}
                       {run && (
                         <span
                           className={`result-dot ${run.passed ? "pass" : "fail"}`}
@@ -898,7 +914,7 @@ function Workspace({
                   <div className="console-controls">
                     <button
                       className="icon-button"
-                      title="Collapse console"
+                      title={t("Collapse console")}
                       onClick={() => setConsoleOpen(false)}
                     >
                       <PanelBottomClose size={15} />
@@ -913,7 +929,7 @@ function Workspace({
                     </span>
                     <button
                       className="icon-button"
-                      title="Clear output"
+                      title={t("Clear output")}
                       onClick={() => {
                         setRun(null);
                         setError("");
@@ -929,15 +945,19 @@ function Workspace({
                       <LoaderCircle size={19} className="spin" />
                       <div>
                         <strong>
-                          Running level {level} checks and your tests…
+                          {t("Running level {level} checks and your tests…", {
+                            level,
+                          })}
                         </strong>
                         <span>
-                          Compiling your solution and evaluating test cases.
+                          {t(
+                            "Compiling your solution and evaluating test cases.",
+                          )}
                         </span>
                       </div>
                     </div>
                   ) : error ? (
-                    <pre className="error-output">{error}</pre>
+                    <pre className="error-output">{t(error)}</pre>
                   ) : run ? (
                     <>
                       {consoleTab === "results" ? (
@@ -948,11 +968,11 @@ function Workspace({
                             {run.passed ? <Check size={16} /> : <X size={16} />}
                             <strong>
                               {run.passed
-                                ? "All checks passed"
-                                : "Some checks didn’t pass"}
+                                ? t("All checks passed")
+                                : t("Some checks didn’t pass")}
                             </strong>
                             <span>
-                              Level {level} · {languageNames[language]}
+                              {t("Level")} {level} · {languageNames[language]}
                             </span>
                             {run.passed && level < problem.levels.length && (
                               <button
@@ -961,7 +981,9 @@ function Workspace({
                                   setRun(null);
                                 }}
                               >
-                                Continue to level {level + 1}
+                                {t("Continue to level {level}", {
+                                  level: level + 1,
+                                })}
                                 <ArrowUpRight size={13} />
                               </button>
                             )}
@@ -974,7 +996,7 @@ function Workspace({
                         </div>
                       ) : (
                         <pre className="raw-output">
-                          {run.output || "(Runner returned no output)"}
+                          {run.output || t("(Runner returned no output)")}
                         </pre>
                       )}
                     </>
@@ -984,9 +1006,11 @@ function Workspace({
                         <Terminal size={21} />
                       </div>
                       <div>
-                        <strong>Your next idea starts here.</strong>
+                        <strong>{t("Your next idea starts here.")}</strong>
                         <span>
-                          Run the tests to see output, errors, and results.
+                          {t(
+                            "Run the tests to see output, errors, and results.",
+                          )}
                         </span>
                       </div>
                       <kbd>⌘ Enter</kbd>
@@ -997,14 +1021,19 @@ function Workspace({
             </>
           ) : (
             <div className="console-collapsed">
-              <button onClick={() => setConsoleOpen(true)} title="Show console">
+              <button
+                onClick={() => setConsoleOpen(true)}
+                title={t("Show console")}
+              >
                 <SquareTerminal size={14} />
-                Show console
+                {t("Show console")}
                 <ChevronDown size={13} />
               </button>
               {run && (
                 <span className={run.passed ? "pass" : "fail"}>
-                  {run.passed ? "All checks passed" : "Some checks didn’t pass"}
+                  {run.passed
+                    ? t("All checks passed")
+                    : t("Some checks didn’t pass")}
                 </span>
               )}
             </div>
@@ -1014,14 +1043,16 @@ function Workspace({
               <span
                 className={`dot ${session?.lspAvailable ? "" : "offline"}`}
               />
-              {status}
+              {t(status)}
             </span>
             <span className="status-right">
               <span>UTF-8</span>
-              <span>{activeFile?.readOnly ? "Read only" : "Editable"}</span>
+              <span>
+                {activeFile?.readOnly ? t("Read only") : t("Editable")}
+              </span>
               <span>{languageNames[language]}</span>
               <span>
-                <LockKeyhole size={11} /> Local workspace
+                <LockKeyhole size={11} /> {t("Local workspace")}
               </span>
             </span>
           </footer>
@@ -1038,27 +1069,29 @@ function Workspace({
             className="library-modal"
             role="dialog"
             aria-modal="true"
-            aria-label="Exercise library"
+            aria-label={t("Exercise library")}
           >
             <header className="library-header">
               <div>
-                <span className="eyebrow">THE PRACTICE ROOM</span>
-                <h2>A little practice. A better design.</h2>
+                <span className="eyebrow">{t("THE PRACTICE ROOM")}</span>
+                <h2>{t("A little practice. A better design.")}</h2>
                 <p>
-                  Real-world systems, small steps. Pick your next challenge.
+                  {t(
+                    "Real-world systems, small steps. Pick your next challenge.",
+                  )}
                 </p>
                 <a
                   className="roadmap-link library-roadmap-link"
                   href="/"
                   onClick={followLink}
                 >
-                  Follow the practice roadmap <ArrowUpRight size={14} />
+                  {t("Follow the practice roadmap")} <ArrowUpRight size={14} />
                 </a>
               </div>
               <button
                 className="icon-button"
                 onClick={() => setLibrary(false)}
-                title="Close exercise library"
+                title={t("Close exercise library")}
               >
                 <X size={20} />
               </button>
@@ -1067,13 +1100,17 @@ function Workspace({
               <div className="search-input">
                 <Search size={17} />
                 <input
-                  aria-label="Search exercises"
+                  aria-label={t("Search exercises")}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search exercises, concepts, systems…"
+                  placeholder={t("Search exercises, concepts, systems…")}
                 />
               </div>
-              <span>{problems.length} exercises · 3 languages</span>
+              <span>
+                {t("{count} exercises · 3 languages", {
+                  count: problems.length,
+                })}
+              </span>
             </div>
             <div className="category-tabs">
               {["All exercises", "Ride-hailing", "Banking", "Fundamentals"].map(
@@ -1083,7 +1120,7 @@ function Workspace({
                     key={c}
                     onClick={() => setCategory(c)}
                   >
-                    {c}
+                    {t(c)}
                   </button>
                 ),
               )}
@@ -1111,28 +1148,31 @@ function Workspace({
                     <span
                       className={`difficulty ${p.difficulty.toLowerCase()}`}
                     >
-                      {p.difficulty}
+                      {t(p.difficulty)}
                     </span>
                   </div>
-                  <span className="card-category">{p.category}</span>
+                  <span className="card-category">{t(p.category)}</span>
                   <h3>{p.title}</h3>
                   <p>{p.summary}</p>
                   <div className="card-footer">
                     <span>
-                      {p.levels.length} levels <span>·</span> {p.duration} min
+                      {p.levels.length} {t("levels")} <span>·</span>{" "}
+                      {p.duration} min
                     </span>
                     <ArrowUpRight size={17} />
                   </div>
                 </a>
               ))}
               {!filtered.length && (
-                <p className="no-results">No exercises match your search.</p>
+                <p className="no-results">
+                  {t("No exercises match your search.")}
+                </p>
               )}
             </div>
             <footer className="library-footer">
               <span>
-                <Code2 size={14} /> No AI autocomplete. Full language
-                intelligence.
+                <Code2 size={14} />{" "}
+                {t("No AI autocomplete. Full language intelligence.")}
               </span>
               <span>Go · Python · TypeScript</span>
             </footer>
@@ -1151,15 +1191,15 @@ function Workspace({
             className="confirm-modal create-file-modal"
             role="dialog"
             aria-modal="true"
-            aria-label="Create file"
+            aria-label={t("Create file")}
             onSubmit={(event) => {
               event.preventDefault();
               void createFile();
             }}
           >
             <FileCode2 size={25} />
-            <h2>Create file</h2>
-            <label htmlFor="new-file-path">File path</label>
+            <h2>{t("Create file")}</h2>
+            <label htmlFor="new-file-path">{t("File path")}</label>
             <input
               id="new-file-path"
               autoFocus
@@ -1179,18 +1219,21 @@ function Workspace({
               disabled={creatingFile}
             />
             <p>
-              Use a relative path ending in{" "}
-              {language === "go"
-                ? ".go"
-                : language === "python"
-                  ? ".py"
-                  : ".ts"}
-              . Folders are created automatically. Extra test files run with Run
-              tests.
+              {t(
+                "Use a relative path ending in {extension}. Folders are created automatically. Extra test files run with Run tests.",
+                {
+                  extension:
+                    language === "go"
+                      ? ".go"
+                      : language === "python"
+                        ? ".py"
+                        : ".ts",
+                },
+              )}
             </p>
             {newFileError && (
               <p className="file-error" role="alert">
-                {newFileError}
+                {t(newFileError)}
               </p>
             )}
             <div className="dialog-actions">
@@ -1200,10 +1243,10 @@ function Workspace({
                 disabled={creatingFile}
                 onClick={() => setNewFileOpen(false)}
               >
-                Cancel
+                {t("Cancel")}
               </button>
               <button className="primary" type="submit" disabled={creatingFile}>
-                {creatingFile ? "Creating…" : "Create file"}
+                {creatingFile ? t("Creating…") : t("Create file")}
               </button>
             </div>
           </form>
@@ -1215,20 +1258,22 @@ function Workspace({
             className="confirm-modal"
             role="dialog"
             aria-modal="true"
-            aria-label="Reset solution"
+            aria-label={t("Reset solution")}
           >
             <RotateCcw size={25} />
-            <h2>Start with a clean slate?</h2>
+            <h2>{t("Start with a clean slate?")}</h2>
             <p>
-              This resets your {languageNames[language]} solution, personal
-              tests, and progress for {problem.title}.
+              {t(
+                "This resets your {language} solution, personal tests, and progress for {problem}.",
+                { language: languageNames[language], problem: problem.title },
+              )}
             </p>
             <div>
               <button
                 className="secondary"
                 onClick={() => setResetConfirm(false)}
               >
-                Keep practicing
+                {t("Keep practicing")}
               </button>
               <button
                 className="primary"
@@ -1239,7 +1284,7 @@ function Workspace({
                   setRevision((r) => r + 1);
                 }}
               >
-                Reset solution
+                {t("Reset solution")}
               </button>
             </div>
           </section>

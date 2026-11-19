@@ -1,0 +1,55 @@
+.preferences-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.preferences-controls label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.preferences-controls select {
+  color: inherit;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px;
+  max-width: 160px;
+}
+.roadmap-nav {
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.app-shell .app-header {
+  gap: 14px;
+}
+@media (max-width: 1450px) {
+  .app-header .distraction-free {
+    display: none;
+  }
+}
+@media (max-width: 1000px) {
+  .app-shell .app-header {
+    height: auto;
+    min-height: 65px;
+    padding: 12px;
+    flex-wrap: wrap;
+  }
+  .app-header .breadcrumb,
+  .app-header .header-divider {
+    display: none;
+  }
+  .preferences-controls {
+    gap: 8px;
+  }
+}
+
+@media (max-width: 1250px) {
+  .app-header .breadcrumb,
+  .app-header .header-divider {
+    display: none;
+  }
+}

@@ -188,3 +188,17 @@
     margin-left: 34px;
   }
 }
+
+:root[data-theme="light"] .roadmap-method {
+  background: #fff5e7;
+  border-color: #e0c8a6;
+}
+:root[data-theme="light"] .roadmap-method p {
+  color: #79644e;
+}
+:root[data-theme="light"] .roadmap-stage-number {
+  border-color: #d5ab8e;
+}
+:root[data-theme="light"] .roadmap-exercises a:hover {
+  background: #edf1f5;
+}

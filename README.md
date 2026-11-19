@@ -27,6 +27,8 @@ Open [127.0.0.1:4173](http://127.0.0.1:4173). Both modes also start the API on p
 
 ## Practice
 
+Use the **Language** and **Theme** controls in the roadmap or workspace header to customize the app. Language follows your browser preference (Portuguese uses pt-BR; other languages fall back to English), with explicit English and Português (Brasil) options. Theme follows the system appearance by default, with light and dark overrides. Both choices are saved in this browser. Exercise descriptions, requirements, roadmap, and interface are localized; source code, API names, examples, and test output stay in English.
+
 - The app opens on the **Practice roadmap**, with a recommended order, language-specific progress, and a shortcut to the next unfinished exercise. Start with the stack and queue, use vending machine as the medium bridge, then dependency planner as the hard bridge. Return to the roadmap at `/` from any exercise.
 - Each exercise has a bookmarkable URL, such as `/practice/ride-dispatch`. Roadmap and library links can be copied or opened in new tabs. Reloading or using browser back/forward preserves the exercise selected by the URL; language, drafts, and progress stay saved locally.
 - Open the exercise library from the **workbench.** logo or back arrow. Filter by ride-hailing, banking, or fundamentals.

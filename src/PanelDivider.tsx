@@ -1,3 +1,4 @@
+import { usePreferences } from "./preferences";
 import { useRef, type PointerEvent } from "react";
 
 type Props = {
@@ -19,6 +20,7 @@ export default function PanelDivider({
   onChange,
   onReset,
 }: Props) {
+  const { t } = usePreferences();
   const drag = useRef<{ coordinate: number; value: number } | null>(null);
   const vertical = orientation === "vertical";
   const resize = (next: number) =>
@@ -43,7 +45,7 @@ export default function PanelDivider({
       aria-valuemax={Math.round(Math.max(min, max()))}
       tabIndex={0}
       className={`panel-divider ${vertical ? "vertical" : "horizontal"}`}
-      title="Drag to resize · Arrow keys to adjust · Double-click to reset"
+      title={t("Drag to resize · Arrow keys to adjust · Double-click to reset")}
       onPointerDown={(event) => {
         if (event.button !== 0) return;
         event.preventDefault();

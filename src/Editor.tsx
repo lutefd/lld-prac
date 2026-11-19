@@ -1,3 +1,4 @@
+import { usePreferences } from "./preferences";
 import { useEffect, useRef } from "react";
 import * as monaco from "monaco-editor";
 import EditorWorker from "monaco-editor/editor/editor.worker?worker";
@@ -45,6 +46,35 @@ monaco.editor.defineTheme("practice-dark", {
     "editorSuggestWidget.selectedBackground": "#344434",
   },
 });
+monaco.editor.defineTheme("practice-light", {
+  base: "vs",
+  inherit: true,
+  rules: [
+    { token: "comment", foreground: "647567", fontStyle: "italic" },
+    { token: "keyword", foreground: "7544A0" },
+    { token: "string", foreground: "427022" },
+    { token: "number", foreground: "986013" },
+    { token: "type.identifier", foreground: "21736D" },
+  ],
+  colors: {
+    "editor.background": "#FFFFFF",
+    "editor.foreground": "#29333F",
+    "editorLineNumber.foreground": "#8A95A1",
+    "editorLineNumber.activeForeground": "#445160",
+    "editor.lineHighlightBackground": "#F4F6F8",
+    "editor.selectionBackground": "#D5E6D5",
+    "editorCursor.foreground": "#39704A",
+    "editorIndentGuide.background1": "#E3E7EB",
+    "editorWidget.background": "#FFFFFF",
+    "editorSuggestWidget.background": "#FFFFFF",
+    "editorSuggestWidget.border": "#CDD4DC",
+    "editorSuggestWidget.selectedBackground": "#E5EFE4",
+  },
+});
+const editorTheme = () =>
+  document.documentElement.dataset.theme === "light"
+    ? "practice-light"
+    : "practice-dark";
 
 type Props = {
   session: Session;
@@ -63,6 +93,7 @@ export default function Editor({
   onStatus,
   locked = false,
 }: Props) {
+  const { t } = usePreferences();
   const container = useRef<HTMLDivElement>(null);
   const editor = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const languageService = useRef<GoLanguageService | null>(null);
@@ -84,7 +115,7 @@ export default function Editor({
     );
     languageService.current = service;
     const instance = monaco.editor.create(container.current, {
-      theme: "practice-dark",
+      theme: editorTheme(),
       language: session.language || "go",
       automaticLayout: true,
       fontFamily: '"SFMono-Regular", Consolas, "Liberation Mono", monospace',
@@ -108,8 +139,11 @@ export default function Editor({
       contextmenu: true,
     });
     editor.current = instance;
+    const updateTheme = () => monaco.editor.setTheme(editorTheme());
+    window.addEventListener("workbench-theme-change", updateTheme);
     service.register();
     return () => {
+      window.removeEventListener("workbench-theme-change", updateTheme);
       service.dispose();
       listeners.current.forEach((listener) => listener.dispose());
       listeners.current.clear();
@@ -187,7 +221,7 @@ export default function Editor({
       ref={container}
       className="monaco-container"
       style={{ height: "100%", width: "100%", minHeight: 0 }}
-      aria-label="Code editor"
+      aria-label={t("Code editor")}
     />
   );
 }
