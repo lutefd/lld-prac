@@ -1,9 +1,45 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import os from "node:os";
 import path from "node:path";
-import { createApp, validateFiles } from "./index.ts";
+import { createApp, validateFiles, validateNewFile } from "./index.ts";
+
+test("new source paths reject traversal, reserved names, collisions and wrong language", () => {
+  const originals = [
+    { path: "implementation.go", content: "", readOnly: false },
+    { path: "Helpers/item.go", content: "", readOnly: false },
+  ];
+  for (const filename of [
+    "../outside.go",
+    "/outside.go",
+    "a/./b.go",
+    "a/../b.go",
+    "a//b.go",
+    "a\\b.go",
+    ".hidden/file.go",
+    "a/hidden_fixture.go",
+    "IMPLEMENTATION.go",
+    "helpers/other.go",
+    "wrong.py",
+    "implementation.go/child.go",
+  ]) {
+    assert.throws(() => validateNewFile(filename, "go", originals), filename);
+  }
+  assert.equal(
+    validateNewFile("models/driver.go", "go", originals),
+    "models/driver.go",
+  );
+  assert.equal(
+    validateNewFile("models/driver.py", "python", []),
+    "models/driver.py",
+  );
+  assert.equal(
+    validateNewFile("models/driver.ts", "typescript", []),
+    "models/driver.ts",
+  );
+});
 
 test("writes reject traversal, locked fixtures and oversized content", () => {
   const files = [
@@ -90,6 +126,87 @@ test("API rejects external origins and hides test sources from problem metadata 
       },
     );
     assert.equal(outside.status, 400);
+    const post = async (route: string, body: unknown) =>
+      fetch(`${base}${route}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    const createdResponse = await post(
+      `/api/workspace/${workspace.sessionId}/create-file`,
+      { path: "models/driver.go", content: "package models\n// initial\n" },
+    );
+    assert.equal(createdResponse.status, 201);
+    const { file } = await createdResponse.json();
+    assert.equal(file.userCreated, true);
+    assert.equal(file.readOnly, false);
+    assert.equal(
+      (
+        await post(`/api/workspace/${workspace.sessionId}/create-file`, {
+          path: "MODELS/driver.go",
+        })
+      ).status,
+      400,
+    );
+    assert.equal(
+      (
+        await post(`/api/workspace/${workspace.sessionId}/create-file`, {
+          path: "hidden_custom.go",
+        })
+      ).status,
+      400,
+    );
+    const updated = { ...file, content: "package models\n// saved edit\n" };
+    assert.equal(
+      (
+        await post(`/api/workspace/${workspace.sessionId}/files`, {
+          files: [updated],
+        })
+      ).status,
+      200,
+    );
+    assert.match(
+      await readFile(
+        path.join(fileURLToPath(workspace.rootUri), file.path),
+        "utf8",
+      ),
+      /saved edit/,
+    );
+    const restoredResponse = await post("/api/workspace", {
+      problemId: metadata.problems[0].id,
+      files: [updated],
+    });
+    assert.equal(restoredResponse.status, 200);
+    const restored = await restoredResponse.json();
+    assert.deepEqual(
+      restored.files.find((item: { path: string }) => item.path === file.path),
+      updated,
+    );
+    assert.equal(
+      await readFile(
+        path.join(fileURLToPath(restored.rootUri), file.path),
+        "utf8",
+      ),
+      updated.content,
+    );
+    assert.equal(
+      (
+        await post("/api/workspace", {
+          problemId: metadata.problems[0].id,
+          files: [{ path: "new.go", content: "package practice" }],
+        })
+      ).status,
+      400,
+    );
+    assert.equal(
+      (
+        await post("/api/workspace", {
+          problemId: metadata.problems[0].id,
+          files: [{ path: "../escape.go", content: "", userCreated: true }],
+        })
+      ).status,
+      400,
+    );
   } finally {
     app.close();
     await new Promise<void>((resolve) => server.close(() => resolve()));

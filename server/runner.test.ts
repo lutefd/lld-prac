@@ -110,3 +110,82 @@ for (const language of ["python", "typescript"] as const) {
     }
   });
 }
+
+for (const language of ["go", "python", "typescript"] as const) {
+  test(`${language} runs additional nested source and user test files`, async () => {
+    const directory = await mkdtemp(path.join(os.tmpdir(), "lld-nested-test-"));
+    const cases = {
+      go: {
+        files: {
+          "go.mod": "module example.com/nested\n\ngo 1.23\n",
+          "implementation.go":
+            'package practice\nimport "example.com/nested/models"\nfunc Answer() int {return models.Double(3)}\n',
+          "level_1_test.go":
+            'package practice\nimport "testing"\nfunc TestLevel1_Answer(t *testing.T){if Answer()!=6 {t.Fatal("helper import")}}\n',
+          "models/value.go":
+            "package models\nfunc Double(value int) int {return value*2}\n",
+          "models/level_9_test.go":
+            'package models\nimport "testing"\nfunc TestCustomNested(t *testing.T){t.Log("nested user test ran");if Double(2)!=4 {t.Fatal("nested result")}}\n',
+        },
+        failingPath: "models/level_9_test.go",
+        failingContent:
+          'package models\nimport "testing"\nfunc TestCustomNested(t *testing.T){t.Fatal("deliberate user failure")}\n',
+      },
+      python: {
+        files: {
+          "test_level_1.py":
+            "import unittest\nfrom models.value import double\nclass Level(unittest.TestCase):\n def test_helper(self): self.assertEqual(double(3),6)\n",
+          "models/value.py": "def double(value): return value*2\n",
+          "models/test_level_9.py":
+            'import unittest\nfrom models.value import double\nclass Custom(unittest.TestCase):\n def test_nested(self): print("nested user test ran");self.assertEqual(double(2),4)\n',
+        },
+        failingPath: "models/test_level_9.py",
+        failingContent:
+          'import unittest\nclass Custom(unittest.TestCase):\n def test_nested(self): self.fail("deliberate user failure")\n',
+      },
+      typescript: {
+        files: {
+          "level_1.test.ts":
+            'import {test} from "node:test";import assert from "node:assert/strict";import {double} from "./models/value.ts";test("helper import",()=>assert.equal(double(3),6));',
+          "models/value.ts":
+            "export function double(value:number):number { return value*2; }",
+          "models/level_9.test.ts":
+            'import {test} from "node:test";import assert from "node:assert/strict";import {double} from "./value.ts";test("nested user test",()=>{console.log("nested user test ran");assert.equal(double(2),4)});',
+        },
+        failingPath: "models/level_9.test.ts",
+        failingContent:
+          'import {test} from "node:test";import assert from "node:assert/strict";test("nested user test",()=>assert.fail("deliberate user failure"));',
+      },
+    };
+    const selected = cases[language];
+    try {
+      const { mkdir } = await import("node:fs/promises");
+      await Promise.all(
+        Object.entries(selected.files).map(async ([filename, content]) => {
+          await mkdir(path.dirname(path.join(directory, filename)), {
+            recursive: true,
+          });
+          await writeFile(path.join(directory, filename), content);
+        }),
+      );
+      const options = {
+        mode: "native",
+        suppliedFiles: Object.keys(selected.files).filter(
+          (filename) => !filename.startsWith("models/"),
+        ),
+      };
+      const passing = await runTests(directory, language, 1, options);
+      assert.equal(passing.passed, true, passing.output);
+      assert.match(passing.output, /nested user test ran/);
+      await writeFile(
+        path.join(directory, selected.failingPath),
+        selected.failingContent,
+      );
+      const failing = await runTests(directory, language, 1, options);
+      assert.equal(failing.passed, false);
+      assert.match(failing.output, /deliberate user failure/);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+}

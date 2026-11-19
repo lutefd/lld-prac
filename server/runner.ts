@@ -5,7 +5,11 @@ import os from "node:os";
 import path from "node:path";
 
 export type Language = "go" | "python" | "typescript";
-type RunOptions = { timeoutMs?: number; mode?: string };
+type RunOptions = {
+  timeoutMs?: number;
+  mode?: string;
+  suppliedFiles?: string[];
+};
 export type RunResult = {
   passed: boolean;
   output: string;
@@ -17,22 +21,32 @@ export function commandFor(language: Language, files: string[]) {
   if (language === "go")
     return {
       command: "go",
-      args: ["test", "-v", "-count=1", "-timeout=12s", "."],
+      args: ["test", "-v", "-count=1", "-timeout=12s", "./..."],
     };
   if (language === "python")
     return {
       command: "python3",
       args: [
-        "-m",
-        "unittest",
-        "-v",
-        ...files
-          .filter((f) =>
-            /^(?:(?:hidden_)?test_level_\d+|hidden_level_\d+|sandbox_test)\.py$/.test(
-              f,
-            ),
-          )
-          .map((f) => f.slice(0, -3)),
+        "-c",
+        `import importlib.util, os, sys, unittest
+sys.path.insert(0, os.getcwd())
+suite = unittest.TestSuite()
+for index, filename in enumerate(sys.argv[1:]):
+    sys.path.insert(0, os.path.dirname(os.path.abspath(filename)))
+    name = "_practice_test_" + str(index)
+    spec = importlib.util.spec_from_file_location(name, filename)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    suite.addTests(unittest.defaultTestLoader.loadTestsFromModule(module))
+result = unittest.TextTestRunner(verbosity=2).run(suite)
+sys.exit(0 if result.wasSuccessful() else 1)
+`,
+        ...files.filter((f) =>
+          /^(?:test_.*|.*_test|hidden_test_level_\d+|hidden_level_\d+)\.py$/.test(
+            path.basename(f),
+          ),
+        ),
       ],
     };
   if (language === "typescript")
@@ -41,7 +55,9 @@ export function commandFor(language: Language, files: string[]) {
       args: [
         "--experimental-strip-types",
         "--test",
-        ...files.filter((f) => f.endsWith(".test.ts")),
+        ...files.filter(
+          (f) => f.endsWith(".test.ts") || f.endsWith("_test.ts"),
+        ),
       ],
     };
   throw new Error("Unsupported language");
@@ -120,6 +136,7 @@ export async function runTests(
   {
     timeoutMs = 20000,
     mode = process.env.PRACTICE_RUNNER || "native",
+    suppliedFiles,
   }: RunOptions = {},
 ): Promise<RunResult> {
   if (!Number.isInteger(level) || level < 1 || level > 9)
@@ -133,11 +150,28 @@ export async function runTests(
     await cp(cwd, snapshot, {
       recursive: true,
       filter: (source) => {
-        const match = /(?:level_)(\d+)/.exec(path.basename(source));
+        const relative = path.relative(cwd, source).split(path.sep).join("/");
+        if (suppliedFiles && !suppliedFiles.includes(relative)) return true;
+        const match =
+          /^(?:hidden_)?(?:test_)?level_(\d+)(?:_test\.go|\.test\.ts|\.py)$/.exec(
+            relative,
+          );
         return !match || Number(match[1]) <= level;
       },
     });
-    const files = await readdir(snapshot);
+    const collectFiles = async (directory: string): Promise<string[]> => {
+      const entries = await readdir(directory, { withFileTypes: true });
+      const groups = await Promise.all(
+        entries.map(async (entry) => {
+          const absolute = path.join(directory, entry.name);
+          return entry.isDirectory()
+            ? collectFiles(absolute)
+            : [path.relative(snapshot, absolute).split(path.sep).join("/")];
+        }),
+      );
+      return groups.flat();
+    };
+    const files = (await collectFiles(snapshot)).sort();
     const selected = commandFor(language, files);
     if (mode === "docker") {
       const images = {

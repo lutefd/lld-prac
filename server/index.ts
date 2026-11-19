@@ -6,6 +6,7 @@ type File = {
   content: string;
   readOnly?: boolean;
   hidden?: boolean;
+  userCreated?: boolean;
 };
 type Workspace = {
   sessionId: string;
@@ -102,6 +103,89 @@ export function validateFiles(files: unknown, originals: File[]): File[] {
   return files;
 }
 
+export function validateNewFile(
+  filePath: unknown,
+  language: Language,
+  originals: File[],
+): string {
+  if (
+    typeof filePath !== "string" ||
+    filePath.length > 240 ||
+    filePath.includes("\\") ||
+    path.isAbsolute(filePath)
+  )
+    throw new Error("Use a relative source file path");
+  const segments = filePath.split("/");
+  if (
+    segments.length > 12 ||
+    segments.some(
+      (segment) =>
+        !/^[A-Za-z0-9_][A-Za-z0-9_.-]*$/.test(segment) ||
+        /^hidden_/i.test(segment),
+    )
+  )
+    throw new Error("Invalid source file path");
+  const extension = { go: ".go", python: ".py", typescript: ".ts" }[language];
+  if (!filePath.endsWith(extension))
+    throw new Error(`Use a ${extension} source file for this language`);
+  const folded = filePath.toLowerCase();
+  for (const original of originals) {
+    const existing = original.path.toLowerCase();
+    if (
+      existing === folded ||
+      existing.startsWith(`${folded}/`) ||
+      folded.startsWith(`${existing}/`)
+    )
+      throw new Error("File already exists or conflicts with an existing path");
+    const otherSegments = original.path.split("/");
+    for (
+      let index = 0;
+      index < Math.min(segments.length, otherSegments.length) - 1;
+      index++
+    ) {
+      if (segments[index].toLowerCase() !== otherSegments[index].toLowerCase())
+        break;
+      if (segments[index] !== otherSegments[index])
+        throw new Error("Directory casing conflicts with an existing path");
+    }
+  }
+  return filePath;
+}
+
+function restoreCreatedFiles(
+  incoming: unknown,
+  language: Language,
+  originals: File[],
+): File[] {
+  if (!Array.isArray(incoming)) throw new Error("Files must be an array");
+  const restored: File[] = [];
+  for (const file of incoming) {
+    if (
+      file &&
+      !originals.some((original) => original.path === file.path) &&
+      file.userCreated === true
+    ) {
+      const filePath = validateNewFile(file.path, language, [
+        ...originals,
+        ...restored,
+      ]);
+      if (
+        typeof file.content !== "string" ||
+        Buffer.byteLength(file.content) > 1000000
+      )
+        throw new Error("Invalid file contents");
+      restored.push({
+        path: filePath,
+        content: file.content,
+        readOnly: false,
+        userCreated: true,
+      });
+    }
+  }
+  validateFiles(incoming, [...originals, ...restored]);
+  return restored;
+}
+
 export function createApp({
   workspaceRoot = path.join(projectRoot, ".practice", "workspaces"),
   catalog = problems,
@@ -195,9 +279,9 @@ export function createApp({
       const language = (req.body.language || "go") as Language;
       if (!Object.hasOwn(lspCommands, language))
         return res.status(400).json({ error: "Unsupported language" });
-      const files = structuredClone(getFiles(problem, language));
+      const files: File[] = structuredClone(getFiles(problem, language));
       // Validate before creating a directory or starting a language server.
-      validateFiles(req.body.files ?? [], files);
+      files.push(...restoreCreatedFiles(req.body.files ?? [], language, files));
       const sessionId = randomUUID();
       const directory = path.join(workspaceRoot, sessionId);
       await mkdir(directory, { recursive: true });
@@ -268,6 +352,41 @@ export function createApp({
       next(error);
     }
   });
+  app.post("/api/workspace/:id/create-file", async (req, res, next) => {
+    const session = req.workspace;
+    try {
+      const filePath = validateNewFile(
+        req.body.path,
+        session.language,
+        session.files,
+      );
+      const content = req.body.content ?? "";
+      if (typeof content !== "string" || Buffer.byteLength(content) > 1000000)
+        throw new Error("Invalid file contents");
+      const file: File = {
+        path: filePath,
+        content,
+        readOnly: false,
+        userCreated: true,
+      };
+      // Reserve the name before asynchronous writes, so concurrent requests cannot collide.
+      session.files.push(file);
+      try {
+        await mkdir(path.dirname(path.join(session.directory, filePath)), {
+          recursive: true,
+        });
+        await writeFile(path.join(session.directory, filePath), content, {
+          flag: "wx",
+        });
+      } catch (error) {
+        session.files.splice(session.files.indexOf(file), 1);
+        throw error;
+      }
+      res.status(201).json({ file });
+    } catch (error) {
+      next(error);
+    }
+  });
   app.post("/api/workspace/:id/run", async (req, res, next) => {
     const session = req.workspace;
     if (session.running)
@@ -283,7 +402,13 @@ export function createApp({
         return res.status(400).json({ error: "Invalid level" });
       session.running = true;
       await saveFiles(session, req.body.files);
-      res.json(await runTests(session.directory, session.language, level));
+      res.json(
+        await runTests(session.directory, session.language, level, {
+          suppliedFiles: session.files
+            .filter((file) => !file.userCreated)
+            .map((file) => file.path),
+        }),
+      );
     } catch (error) {
       next(error);
     } finally {
@@ -294,12 +419,9 @@ export function createApp({
     try {
       const session = req.workspace;
       if (!session.lsp || session.lsp.closed)
-        return res
-          .status(503)
-          .json({
-            error:
-              "Language server unavailable; install it and restart the app",
-          });
+        return res.status(503).json({
+          error: "Language server unavailable; install it and restart the app",
+        });
       const { method, params } = req.body;
       if (!allowedMethods.has(method))
         return res.status(400).json({ error: "Unsupported LSP method" });
