@@ -2,18 +2,18 @@ export const roadmapTranslations: Record<string, string> = {
   "Code editor": "Editor de código",
   "Drag to resize · Arrow keys to adjust · Double-click to reset":
     "Arraste para redimensionar · Use as setas para ajustar · Clique duas vezes para restaurar",
-  "Roadmap navigation": "Navegação da trilha",
+  "Roadmap navigation": "Navegação do roadmap",
   "Resume practice": "Retomar prática",
   "Start practicing": "Começar a praticar",
-  "YOUR PRACTICE PATH": "SUA TRILHA DE PRÁTICA",
+  "YOUR PRACTICE PATH": "SEU ROADMAP DE PRÁTICA",
   "Small steps. Stronger designs.": "Pequenos passos. Projetos melhores.",
   "A suggested order from your first collection to systems with competing rules. Finish all three levels of each case, then move on. You can jump ahead whenever you feel ready.":
     "Uma sequência sugerida, da sua primeira coleção a sistemas com regras concorrentes. Conclua os três níveis de cada exercício antes de avançar. Você pode pular etapas quando se sentir pronto.",
   "Progress in": "Progresso em",
-  "Roadmap language": "Linguagem da trilha",
+  "Roadmap language": "Linguagem do roadmap",
   "{completed} of {total} exercises completed":
     "{completed} de {total} exercícios concluídos",
-  "Continue the path": "Continuar a trilha",
+  "Continue the path": "Continuar o roadmap",
   "How to practice": "Como praticar",
   "Make each case count": "Aproveite cada exercício",
   "Read one level. List its invariants and try a simple design. Add your own boundary tests, then run the supplied checks. After passing, explain your tradeoffs and revisit the case later without your old solution. Leave the timer off while learning; use it on a second attempt.":

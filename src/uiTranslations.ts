@@ -2,8 +2,8 @@ export const uiTranslations: Record<string, string> = {
   Reconnect: "Reconectar",
   "Exercise not found": "Exercício não encontrado",
   "This URL does not match an exercise. Choose your next case from the roadmap.":
-    "Este endereço não corresponde a um exercício. Escolha seu próximo desafio na trilha.",
-  "Practice roadmap": "Trilha de prática",
+    "Este endereço não corresponde a um exercício. Escolha seu próximo desafio no roadmap.",
+  "Practice roadmap": "Roadmap de prática",
   LOCAL: "LOCAL",
   Practice: "Prática",
   "Low-level design": "Design de baixo nível",
@@ -48,7 +48,7 @@ export const uiTranslations: Record<string, string> = {
     "Um pouco de prática. Um design melhor.",
   "Real-world systems, small steps. Pick your next challenge.":
     "Sistemas do mundo real, pequenos passos. Escolha seu próximo desafio.",
-  "Follow the practice roadmap": "Siga a trilha de prática",
+  "Follow the practice roadmap": "Siga o roadmap de prática",
   levels: "níveis",
   "No exercises match your search.":
     "Nenhum exercício corresponde à sua busca.",

@@ -23,7 +23,7 @@ test("browser locale and system theme are defaults; overrides persist without re
     fullPage: true,
     animations: "disabled",
   });
-  await page.getByLabel("Tema", { exact: true }).selectOption("dark");
+  await page.getByRole("button", { name: "Ativar tema escuro" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.getByLabel("Idioma", { exact: true }).selectOption("en");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
@@ -59,7 +59,7 @@ test("browser locale and system theme are defaults; overrides persist without re
     fullPage: true,
     animations: "disabled",
   });
-  await page.getByLabel("Tema", { exact: true }).selectOption("light");
+  await page.getByRole("button", { name: "Ativar tema claro" }).click();
   await expect(page.locator(".monaco-editor")).toHaveClass(/vs(\s|$)/);
   await page.screenshot({
     path: "test-results/workspace-pt-light.png",
@@ -68,7 +68,9 @@ test("browser locale and system theme are defaults; overrides persist without re
   });
   await page.setViewportSize({ width: 375, height: 812 });
   await expect(page.getByLabel("Idioma", { exact: true })).toBeInViewport();
-  await expect(page.getByLabel("Tema", { exact: true })).toBeInViewport();
+  await expect(
+    page.getByRole("button", { name: "Ativar tema escuro" }),
+  ).toBeInViewport();
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth),
   ).toBeLessThanOrEqual(375);
@@ -98,11 +100,15 @@ test("system theme follows changes and unsupported browser languages fall back t
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.emulateMedia({ colorScheme: "light" });
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-  await page.getByLabel("Theme", { exact: true }).selectOption("dark");
+  await page.getByRole("button", { name: "Switch to dark theme" }).click();
   await page.emulateMedia({ colorScheme: "dark" });
   await page.emulateMedia({ colorScheme: "light" });
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-  await page.getByLabel("Theme", { exact: true }).selectOption("system");
+  await page.getByRole("button", { name: "Switch to light theme" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await page.emulateMedia({ colorScheme: "dark" });
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await page.setViewportSize({ width: 375, height: 812 });
   expect(

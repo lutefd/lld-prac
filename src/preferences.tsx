@@ -5,6 +5,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { Moon, Sun } from "lucide-react";
 import { uiTranslations } from "./uiTranslations";
 import { roadmapTranslations } from "./roadmapTranslations";
 import "./preferences.css";
@@ -19,10 +20,8 @@ type Translate = (
 const labels: Record<string, string> = {
   Language: "Idioma",
   "Browser default": "Padrão do navegador",
-  Theme: "Tema",
-  "System default": "Padrão do sistema",
-  Light: "Claro",
-  Dark: "Escuro",
+  "Switch to light theme": "Ativar tema claro",
+  "Switch to dark theme": "Ativar tema escuro",
   Preferences: "Preferências",
 };
 function storedChoice<T extends string>(
@@ -43,7 +42,7 @@ export function browserLocale(languages: readonly string[]): Locale {
 const PreferencesContext = createContext<{
   locale: Locale;
   localePreference: LocalePreference;
-  themePreference: ThemePreference;
+  theme: "light" | "dark";
   setLocalePreference: (value: LocalePreference) => void;
   setThemePreference: (value: ThemePreference) => void;
   t: Translate;
@@ -130,7 +129,7 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
       value={{
         locale,
         localePreference,
-        themePreference,
+        theme,
         setLocalePreference,
         setThemePreference,
         t,
@@ -149,7 +148,7 @@ export function PreferencesControls() {
   const {
     t,
     localePreference,
-    themePreference,
+    theme,
     setLocalePreference,
     setThemePreference,
   } = usePreferences();
@@ -173,20 +172,24 @@ export function PreferencesControls() {
           <option value="pt-BR">Português (Brasil)</option>
         </select>
       </label>
-      <label>
-        {t("Theme")}
-        <select
-          aria-label={t("Theme")}
-          value={themePreference}
-          onChange={(event) =>
-            setThemePreference(event.target.value as ThemePreference)
-          }
-        >
-          <option value="system">{t("System default")}</option>
-          <option value="light">{t("Light")}</option>
-          <option value="dark">{t("Dark")}</option>
-        </select>
-      </label>
+      <button
+        type="button"
+        className="theme-toggle"
+        aria-label={t(
+          theme === "dark" ? "Switch to light theme" : "Switch to dark theme",
+        )}
+        title={t(
+          theme === "dark" ? "Switch to light theme" : "Switch to dark theme",
+        )}
+        aria-pressed={theme === "dark"}
+        onClick={() => setThemePreference(theme === "dark" ? "light" : "dark")}
+      >
+        {theme === "dark" ? (
+          <Sun size={17} aria-hidden="true" />
+        ) : (
+          <Moon size={17} aria-hidden="true" />
+        )}
+      </button>
     </div>
   );
 }

@@ -53,3 +53,19 @@
     display: none;
   }
 }
+
+.preferences-controls .theme-toggle {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.preferences-controls .theme-toggle:hover {
+  color: var(--orange);
+  border-color: var(--orange);
+}
