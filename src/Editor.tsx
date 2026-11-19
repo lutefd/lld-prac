@@ -1,0 +1,182 @@
+import { useEffect, useRef } from "react";
+import * as monaco from "monaco-editor";
+import EditorWorker from "monaco-editor/editor/editor.worker?worker";
+import { GoLanguageService, type PracticeFile, type Session } from "./lsp";
+
+// Bundle Monaco's worker with the application; no network-loaded editor or AI services.
+(globalThis as any).MonacoEnvironment = { getWorker: () => new EditorWorker() };
+// Assistance comes from the connected language server, avoiding duplicate TS suggestions.
+monaco.typescript.typescriptDefaults.setModeConfiguration({
+  completionItems: false,
+  hovers: false,
+  documentSymbols: false,
+  definitions: false,
+  references: false,
+  documentHighlights: false,
+  rename: false,
+  documentRangeFormattingEdits: false,
+  diagnostics: false,
+  onTypeFormattingEdits: false,
+  codeActions: false,
+  signatureHelp: false,
+});
+monaco.editor.defineTheme("practice-dark", {
+  base: "vs-dark",
+  inherit: true,
+  rules: [
+    { token: "comment", foreground: "748178", fontStyle: "italic" },
+    { token: "keyword", foreground: "C6ADFA" },
+    { token: "string", foreground: "B5CE9A" },
+    { token: "number", foreground: "E9BD86" },
+    { token: "type.identifier", foreground: "8BC8C0" },
+  ],
+  colors: {
+    "editor.background": "#171a1f",
+    "editor.foreground": "#CDD2D9",
+    "editorLineNumber.foreground": "#525965",
+    "editorLineNumber.activeForeground": "#ACB6C3",
+    "editor.lineHighlightBackground": "#1D2128",
+    "editor.selectionBackground": "#334838",
+    "editorCursor.foreground": "#B9E787",
+    "editorIndentGuide.background1": "#272D34",
+    "editorWidget.background": "#20252C",
+    "editorSuggestWidget.background": "#20252C",
+    "editorSuggestWidget.border": "#343B44",
+    "editorSuggestWidget.selectedBackground": "#344434",
+  },
+});
+
+type Props = {
+  session: Session;
+  files: PracticeFile[];
+  activePath: string;
+  onChange: (path: string, value: string) => void;
+  onStatus?: (status: string) => void;
+  locked?: boolean;
+};
+
+export default function Editor({
+  session,
+  files,
+  activePath,
+  onChange,
+  onStatus,
+  locked = false,
+}: Props) {
+  const container = useRef<HTMLDivElement>(null);
+  const editor = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
+  const models = useRef(new Map<string, monaco.editor.ITextModel>());
+  const savedViews = useRef(
+    new Map<string, monaco.editor.ICodeEditorViewState | null>(),
+  );
+  const active = useRef(activePath);
+  const callbacks = useRef({ onChange, onStatus });
+  callbacks.current = { onChange, onStatus };
+  const initialFiles = useRef(files);
+  initialFiles.current = files;
+
+  useEffect(() => {
+    if (!container.current) return;
+    const service = new GoLanguageService(session, (status) =>
+      callbacks.current.onStatus?.(status),
+    );
+    const listeners: monaco.IDisposable[] = [];
+    const instance = monaco.editor.create(container.current, {
+      theme: "practice-dark",
+      language: session.language || "go",
+      automaticLayout: true,
+      fontFamily: '"SFMono-Regular", Consolas, "Liberation Mono", monospace',
+      fontSize: 13,
+      fontLigatures: true,
+      lineHeight: 23,
+      padding: { top: 22, bottom: 22 },
+      minimap: { enabled: false },
+      scrollBeyondLastLine: false,
+      smoothScrolling: true,
+      renderLineHighlight: "line",
+      lineNumbersMinChars: 4,
+      folding: true,
+      bracketPairColorization: { enabled: true },
+      tabSize: 4,
+      insertSpaces: false,
+      inlineSuggest: { enabled: false },
+      wordBasedSuggestions: "off",
+      quickSuggestions: { other: true, comments: false, strings: false },
+      suggest: { showWords: false, preview: false },
+      contextmenu: true,
+    });
+    editor.current = instance;
+    for (const file of initialFiles.current) {
+      const uri = monaco.Uri.parse(service.uri(file.path));
+      const language = file.path.endsWith(".go")
+        ? "go"
+        : file.path.endsWith(".py")
+          ? "python"
+          : file.path.endsWith(".ts")
+            ? "typescript"
+            : file.path.endsWith(".json")
+              ? "plaintext"
+              : "plaintext";
+      const model = monaco.editor.createModel(file.content, language, uri);
+      models.current.set(file.path, model);
+      service.open(model);
+      listeners.push(
+        model.onDidChangeContent(() => {
+          if (file.readOnly) return;
+          service.change(model);
+          callbacks.current.onChange(file.path, model.getValue());
+        }),
+      );
+    }
+    service.register();
+    const file = initialFiles.current.find(
+      (value) => value.path === active.current,
+    );
+    instance.setModel(models.current.get(active.current) || null);
+    instance.updateOptions({ readOnly: file?.readOnly ?? false });
+    return () => {
+      service.dispose();
+      listeners.forEach((listener) => listener.dispose());
+      instance.dispose();
+      models.current.forEach((model) => model.dispose());
+      models.current.clear();
+      savedViews.current.clear();
+      editor.current = null;
+    };
+  }, [session.sessionId]);
+
+  useEffect(() => {
+    const instance = editor.current;
+    if (!instance) return;
+    if (active.current !== activePath)
+      savedViews.current.set(active.current, instance.saveViewState());
+    active.current = activePath;
+    const model = models.current.get(activePath);
+    if (!model) return;
+    instance.setModel(model);
+    instance.updateOptions({
+      readOnly:
+        locked ||
+        (files.find((file) => file.path === activePath)?.readOnly ?? false),
+    });
+    const view = savedViews.current.get(activePath);
+    if (view) instance.restoreViewState(view);
+  }, [activePath, session.sessionId, files, locked]);
+
+  useEffect(() => {
+    for (const file of files) {
+      const model = models.current.get(file.path);
+      if (model && model.getValue() !== file.content)
+        model.setValue(file.content);
+    }
+  }, [files]);
+
+  return (
+    <div
+      ref={container}
+      className="monaco-container"
+      style={{ height: "100%", width: "100%", minHeight: 0 }}
+      aria-label="Code editor"
+    />
+  );
+}
