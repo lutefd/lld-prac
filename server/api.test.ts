@@ -287,7 +287,9 @@ test("API queues globally, locks queued workspaces and preserves queue errors", 
     workspaceRoot: directory,
     enableLsp: false,
     queueOptions: { concurrency: 1, maxWaiting: 1, waitTimeoutMs: 500 },
-    executeTests: async () => {
+    testTimeoutMs: 60000,
+    executeTests: async (_directory, _language, _level, options) => {
+      assert.equal(options?.timeoutMs, 60000);
       calls++;
       started();
       await blocked;

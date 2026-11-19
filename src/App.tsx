@@ -83,15 +83,20 @@ const write = (key: string, value: unknown) => {
     localStorage.setItem(key, JSON.stringify(value));
   } catch {}
 };
-async function api<T = unknown>(path: string, body?: unknown): Promise<T> {
+async function api<T = unknown>(
+  path: string,
+  body?: unknown,
+  signal?: AbortSignal,
+): Promise<T> {
   const response = await fetch(
     `/api${path}`,
     body === undefined
-      ? undefined
+      ? { signal }
       : {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
+          signal,
         },
   );
   const data = await response.json();
@@ -236,6 +241,7 @@ function Workspace({
   };
   const generation = useRef(0),
     saveGeneration = useRef(0);
+  const runningRequest = useRef<AbortController | null>(null);
   const draftKey = `workbench.draft.${problem.id}.${language}`;
   const progressKey = `workbench.progress.${problem.id}.${language}`;
   useEffect(() => {
@@ -243,6 +249,7 @@ function Workspace({
     write("workbench.language", language);
     const gen = ++generation.current;
     let openedId: string | undefined;
+    setRunning(false);
     setSession(null);
     setFiles([]);
     setError("");
@@ -283,6 +290,8 @@ function Workspace({
       });
     return () => {
       generation.current++;
+      runningRequest.current?.abort();
+      runningRequest.current = null;
       if (openedId)
         void fetch(`/api/workspace/${openedId}`, { method: "DELETE" });
     };
@@ -325,16 +334,19 @@ function Workspace({
   const runTests = useCallback(async () => {
     if (!session || running) return;
     const gen = generation.current;
+    const controller = new AbortController();
+    runningRequest.current = controller;
     setRunning(true);
     setConsoleOpen(true);
     setRun(null);
     setError("");
     setConsoleTab("console");
     try {
-      const result = await api<Run>(`/workspace/${session.sessionId}/run`, {
-        level,
-        files: files.filter((f) => !f.readOnly),
-      });
+      const result = await api<Run>(
+        `/workspace/${session.sessionId}/run`,
+        { level, files: files.filter((f) => !f.readOnly) },
+        controller.signal,
+      );
       if (gen !== generation.current) return;
       setRun(result);
       if (result.passed) {
@@ -345,7 +357,10 @@ function Workspace({
     } catch (e) {
       if (gen === generation.current) setError((e as Error).message);
     } finally {
-      setRunning(false);
+      if (gen === generation.current) {
+        runningRequest.current = null;
+        setRunning(false);
+      }
     }
   }, [
     session,
@@ -503,7 +518,6 @@ function Workspace({
             <select
               aria-label={t("Programming language")}
               value={language}
-              disabled={running}
               onChange={(e) => setLanguage(e.target.value as Language)}
             >
               {Object.entries(languageNames).map(([id, name]) => (

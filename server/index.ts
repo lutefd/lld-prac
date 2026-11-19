@@ -35,6 +35,7 @@ type AppOptions = {
   maxWorkspaces?: number;
   workspaceIdleMs?: number;
   lspIdleMs?: number;
+  testTimeoutMs?: number;
   cleanupIntervalMs?: number;
   allowedOrigins?: string[];
   queueOptions?: ConstructorParameters<typeof TestQueue>[0];
@@ -213,6 +214,7 @@ export function createApp({
   maxWorkspaces = setting("PRACTICE_MAX_WORKSPACES", 20),
   workspaceIdleMs = setting("PRACTICE_WORKSPACE_IDLE_MS", 3600000),
   lspIdleMs = setting("PRACTICE_LSP_IDLE_MS", 300000),
+  testTimeoutMs = setting("PRACTICE_TEST_TIMEOUT_MS", 20000),
   cleanupIntervalMs = 60000,
   allowedOrigins = (process.env.PRACTICE_ALLOWED_ORIGINS || "")
     .split(",")
@@ -512,6 +514,7 @@ export function createApp({
           if (session.closing) throw new Error("Workspace was closed");
           await saveFiles(session, req.body.files);
           return executeTests(session.directory, session.language, level, {
+            timeoutMs: testTimeoutMs,
             suppliedFiles: session.files
               .filter((file) => !file.userCreated)
               .map((file) => file.path),

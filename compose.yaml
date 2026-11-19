@@ -18,14 +18,19 @@ services:
       context: .
       target: backend
     restart: unless-stopped
+    depends_on:
+      go-runner:
+        condition: service_completed_successfully
     environment:
       PRACTICE_HOST: 0.0.0.0
       PRACTICE_ALLOWED_ORIGINS: ${PRACTICE_ALLOWED_ORIGINS:?Set your public URL in .env}
       PRACTICE_RUNNER: docker
+      PRACTICE_GO_IMAGE: workbench-go-runner:1.26
       PRACTICE_WORKSPACE_ROOT: /app/.practice/workspaces
       PRACTICE_RUN_ROOT: ${PRACTICE_RUN_ROOT:-/var/lib/workbench/runs}
       PRACTICE_MAX_WORKSPACES: ${PRACTICE_MAX_WORKSPACES:-20}
       PRACTICE_TEST_CONCURRENCY: ${PRACTICE_TEST_CONCURRENCY:-2}
+      PRACTICE_TEST_TIMEOUT_MS: ${PRACTICE_TEST_TIMEOUT_MS:-60000}
       PRACTICE_TEST_QUEUE_LIMIT: ${PRACTICE_TEST_QUEUE_LIMIT:-10}
       PRACTICE_QUEUE_TIMEOUT_MS: ${PRACTICE_QUEUE_TIMEOUT_MS:-60000}
       PRACTICE_LSP_IDLE_MS: ${PRACTICE_LSP_IDLE_MS:-300000}
@@ -51,6 +56,20 @@ services:
       timeout: 5s
       start_period: 30s
       retries: 3
+
+  # Build the image before the backend starts launching sibling test containers.
+  go-runner:
+    image: workbench-go-runner:1.26
+    build:
+      context: .
+      dockerfile: deploy/go-runner.Dockerfile
+    entrypoint: ["/bin/true"]
+    network_mode: none
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
 
 volumes:
   workspaces:
