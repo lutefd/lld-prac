@@ -177,7 +177,7 @@ export async function runTests(
     const selected = commandFor(language, files);
     if (mode === "docker") {
       const images = {
-        go: "golang:1.26-alpine",
+        go: process.env.PRACTICE_GO_IMAGE || "golang:1.26-alpine",
         python: "python:3.14-alpine",
         typescript: "node:24-alpine",
       };
