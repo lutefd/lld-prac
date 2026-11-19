@@ -1487,3 +1487,139 @@ h1 {
 .requirements-panel {
   min-height: 0;
 }
+
+/* Splitters keep the editor usable while allowing a custom workspace layout. */
+.workspace {
+  grid-template-columns: clamp(
+      220px,
+      var(--requirements-width, 355px),
+      45%
+    ) 5px minmax(0, 1fr);
+}
+.explorer {
+  width: clamp(130px, var(--explorer-width, 195px), 40%);
+}
+.requirements-panel,
+.explorer {
+  border-right: 0;
+}
+.panel-divider {
+  flex-shrink: 0;
+  position: relative;
+  background: #22272e;
+  touch-action: none;
+  z-index: 3;
+  outline-offset: -1px;
+}
+.panel-divider.vertical {
+  width: 5px;
+  cursor: col-resize;
+}
+.panel-divider.horizontal {
+  height: 5px;
+  cursor: row-resize;
+}
+.panel-divider::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--orange);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.panel-divider.vertical::before {
+  content: "";
+  position: absolute;
+  inset: 0 -3px;
+}
+.panel-divider.horizontal::before {
+  content: "";
+  position: absolute;
+  inset: -3px 0;
+}
+.panel-divider:hover::after,
+.panel-divider:focus-visible::after {
+  opacity: 0.75;
+}
+.panel-divider > span {
+  position: absolute;
+  background: #626d7a;
+  border-radius: 2px;
+  pointer-events: none;
+}
+.panel-divider.vertical > span {
+  width: 1px;
+  height: 24px;
+  left: 2px;
+  top: calc(50% - 12px);
+}
+.panel-divider.horizontal > span {
+  height: 1px;
+  width: 28px;
+  top: 2px;
+  left: calc(50% - 14px);
+}
+.resizing-panels,
+.resizing-panels * {
+  user-select: none !important;
+}
+.resizing-vertical,
+.resizing-vertical * {
+  cursor: col-resize !important;
+}
+.resizing-horizontal,
+.resizing-horizontal * {
+  cursor: row-resize !important;
+}
+.resizing-panels .monaco-container {
+  pointer-events: none;
+}
+.console-panel {
+  height: var(--console-height, 235px);
+  flex-shrink: 0;
+  max-height: calc(100% - 180px);
+  resize: none;
+  border-top: 0;
+}
+.console-collapsed {
+  height: 36px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  border-top: 1px solid var(--line);
+  background: #191d22;
+}
+.console-collapsed button {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: #b1bac7;
+  font-size: 10px;
+}
+.console-collapsed button svg:last-child {
+  transform: rotate(180deg);
+}
+.console-collapsed > span {
+  font-size: 10px;
+}
+.console-collapsed .pass {
+  color: var(--green);
+}
+.console-collapsed .fail {
+  color: #dca094;
+}
+@media (max-width: 850px) {
+  .coding-body > .panel-divider.vertical {
+    display: none;
+  }
+}
+@media (max-width: 600px) {
+  .workspace > .panel-divider.vertical {
+    display: none;
+  }
+  .console-panel {
+    max-height: calc(100% - 180px);
+  }
+}

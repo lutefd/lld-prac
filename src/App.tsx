@@ -16,6 +16,7 @@ import {
   LoaderCircle,
   LockKeyhole,
   PanelLeftClose,
+  PanelBottomClose,
   Play,
   RotateCcw,
   Search,
@@ -25,6 +26,8 @@ import {
   Zap,
 } from "lucide-react";
 import Editor from "./Editor";
+import PanelDivider from "./PanelDivider";
+import type { CSSProperties } from "react";
 
 type Language = "go" | "python" | "typescript";
 type File = { path: string; content: string; readOnly: boolean };
@@ -131,8 +134,33 @@ function Workspace({ problems }: { problems: Problem[] }) {
   const [error, setError] = useState(""),
     [status, setStatus] = useState("Connecting"),
     [saved, setSaved] = useState(true),
-    [requirements, setRequirements] = useState(true),
-    [explorer, setExplorer] = useState(true);
+    [requirements, setRequirements] = useState(() =>
+      read("workbench.panels.requirements", true),
+    ),
+    [explorer, setExplorer] = useState(() =>
+      read("workbench.panels.explorer", true),
+    );
+  const [consoleOpen, setConsoleOpen] = useState(() =>
+    read("workbench.panels.console", true),
+  );
+  const [panelSizes, setPanelSizes] = useState(() =>
+    read("workbench.panels.sizes", {
+      requirements: 355,
+      explorer: 195,
+      console: 235,
+    }),
+  );
+  const workspaceRef = useRef<HTMLElement>(null);
+  const codingRef = useRef<HTMLElement>(null);
+  const codingBodyRef = useRef<HTMLDivElement>(null);
+  const sizePanel = (panel: keyof typeof panelSizes, size: number) =>
+    setPanelSizes((current) => ({ ...current, [panel]: size }));
+  useEffect(() => {
+    write("workbench.panels.requirements", requirements);
+    write("workbench.panels.explorer", explorer);
+    write("workbench.panels.console", consoleOpen);
+    write("workbench.panels.sizes", panelSizes);
+  }, [requirements, explorer, consoleOpen, panelSizes]);
   const [library, setLibrary] = useState(false),
     [query, setQuery] = useState(""),
     [category, setCategory] = useState("All exercises"),
@@ -233,6 +261,7 @@ function Workspace({ problems }: { problems: Problem[] }) {
     if (!session || running) return;
     const gen = generation.current;
     setRunning(true);
+    setConsoleOpen(true);
     setRun(null);
     setError("");
     setConsoleTab("console");
@@ -402,6 +431,14 @@ function Workspace({ problems }: { problems: Problem[] }) {
         </div>
       </div>
       <main
+        ref={workspaceRef}
+        style={
+          {
+            "--requirements-width": `${panelSizes.requirements}px`,
+            "--explorer-width": `${panelSizes.explorer}px`,
+            "--console-height": `${panelSizes.console}px`,
+          } as CSSProperties
+        }
         className={`workspace ${requirements ? "" : "requirements-hidden"} ${explorer ? "" : "explorer-hidden"}`}
       >
         {requirements && (
@@ -528,8 +565,30 @@ function Workspace({ problems }: { problems: Problem[] }) {
             </div>
           </aside>
         )}
-        <section className="coding-area">
-          <div className="coding-body">
+        {requirements && (
+          <PanelDivider
+            label="Resize requirements"
+            orientation="vertical"
+            value={panelSizes.requirements}
+            min={220}
+            max={() =>
+              Math.max(
+                220,
+                Math.min(
+                  (workspaceRef.current?.clientWidth ?? window.innerWidth) *
+                    0.45,
+                  (workspaceRef.current?.clientWidth ?? window.innerWidth) -
+                    (explorer ? panelSizes.explorer : 0) -
+                    330,
+                ),
+              )
+            }
+            onChange={(value) => sizePanel("requirements", value)}
+            onReset={() => sizePanel("requirements", 355)}
+          />
+        )}
+        <section className="coding-area" ref={codingRef}>
+          <div className="coding-body" ref={codingBodyRef}>
             {explorer && (
               <aside className="explorer">
                 <div className="panel-heading">
@@ -577,6 +636,25 @@ function Workspace({ problems }: { problems: Problem[] }) {
                   <span>Hidden checks run with your tests.</span>
                 </div>
               </aside>
+            )}
+            {explorer && (
+              <PanelDivider
+                label="Resize file explorer"
+                orientation="vertical"
+                value={panelSizes.explorer}
+                min={130}
+                max={() =>
+                  Math.max(
+                    130,
+                    Math.min(
+                      (codingBodyRef.current?.clientWidth ?? 800) * 0.4,
+                      (codingBodyRef.current?.clientWidth ?? 800) - 325,
+                    ),
+                  )
+                }
+                onChange={(value) => sizePanel("explorer", value)}
+                onReset={() => sizePanel("explorer", 195)}
+              />
             )}
             <div className="editor-area">
               <div className="editor-tabs">
@@ -659,121 +737,156 @@ function Workspace({ problems }: { problems: Problem[] }) {
               )}
             </div>
           </div>
-          <section className="console-panel" aria-label="Test output">
-            <div className="console-heading">
-              <div className="console-tabs">
-                <button
-                  className={consoleTab === "console" ? "selected" : ""}
-                  onClick={() => setConsoleTab("console")}
-                >
-                  <SquareTerminal size={14} />
-                  Console
-                </button>
-                <button
-                  className={consoleTab === "results" ? "selected" : ""}
-                  onClick={() => setConsoleTab("results")}
-                >
-                  <FlaskConical size={14} />
-                  Test results
-                  {run && (
-                    <span
-                      className={`result-dot ${run.passed ? "pass" : "fail"}`}
-                    />
-                  )}
-                </button>
-              </div>
-              <div className="console-controls">
-                {run && <span>{(run.durationMs / 1000).toFixed(2)}s</span>}
-                <span className="console-command">
-                  {language === "go"
-                    ? "go test -v"
-                    : language === "python"
-                      ? "python -m unittest -v"
-                      : "node --test"}
-                </span>
-                <button
-                  className="icon-button"
-                  title="Clear output"
-                  onClick={() => {
-                    setRun(null);
-                    setError("");
-                  }}
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            </div>
-            <div className="console-content" aria-live="polite">
-              {running ? (
-                <div className="console-empty">
-                  <LoaderCircle size={19} className="spin" />
-                  <div>
-                    <strong>
-                      Running level {level} checks and your tests…
-                    </strong>
-                    <span>
-                      Compiling your solution and evaluating test cases.
+          {consoleOpen ? (
+            <>
+              <PanelDivider
+                label="Resize console"
+                orientation="horizontal"
+                value={panelSizes.console}
+                min={120}
+                max={() =>
+                  Math.max(120, (codingRef.current?.clientHeight ?? 600) - 180)
+                }
+                onChange={(value) => sizePanel("console", value)}
+                onReset={() => sizePanel("console", 235)}
+              />
+              <section className="console-panel" aria-label="Test output">
+                <div className="console-heading">
+                  <div className="console-tabs">
+                    <button
+                      className={consoleTab === "console" ? "selected" : ""}
+                      onClick={() => setConsoleTab("console")}
+                    >
+                      <SquareTerminal size={14} />
+                      Console
+                    </button>
+                    <button
+                      className={consoleTab === "results" ? "selected" : ""}
+                      onClick={() => setConsoleTab("results")}
+                    >
+                      <FlaskConical size={14} />
+                      Test results
+                      {run && (
+                        <span
+                          className={`result-dot ${run.passed ? "pass" : "fail"}`}
+                        />
+                      )}
+                    </button>
+                  </div>
+                  <div className="console-controls">
+                    <button
+                      className="icon-button"
+                      title="Collapse console"
+                      onClick={() => setConsoleOpen(false)}
+                    >
+                      <PanelBottomClose size={15} />
+                    </button>
+                    {run && <span>{(run.durationMs / 1000).toFixed(2)}s</span>}
+                    <span className="console-command">
+                      {language === "go"
+                        ? "go test -v"
+                        : language === "python"
+                          ? "python -m unittest -v"
+                          : "node --test"}
                     </span>
+                    <button
+                      className="icon-button"
+                      title="Clear output"
+                      onClick={() => {
+                        setRun(null);
+                        setError("");
+                      }}
+                    >
+                      <X size={14} />
+                    </button>
                   </div>
                 </div>
-              ) : error ? (
-                <pre className="error-output">{error}</pre>
-              ) : run ? (
-                <>
-                  {consoleTab === "results" ? (
-                    <div className="test-results">
-                      <div
-                        className={`result-banner ${run.passed ? "pass" : "fail"}`}
-                      >
-                        {run.passed ? <Check size={16} /> : <X size={16} />}
+                <div className="console-content" aria-live="polite">
+                  {running ? (
+                    <div className="console-empty">
+                      <LoaderCircle size={19} className="spin" />
+                      <div>
                         <strong>
-                          {run.passed
-                            ? "All checks passed"
-                            : "Some checks didn’t pass"}
+                          Running level {level} checks and your tests…
                         </strong>
                         <span>
-                          Level {level} · {languageNames[language]}
+                          Compiling your solution and evaluating test cases.
                         </span>
-                        {run.passed && level < problem.levels.length && (
-                          <button
-                            onClick={() => {
-                              setLevel(level + 1);
-                              setRun(null);
-                            }}
-                          >
-                            Continue to level {level + 1}
-                            <ArrowUpRight size={13} />
-                          </button>
-                        )}
                       </div>
-                      {testLines.length ? (
-                        <pre>{testLines.join("\n")}</pre>
-                      ) : (
-                        <pre>{run.output}</pre>
-                      )}
                     </div>
+                  ) : error ? (
+                    <pre className="error-output">{error}</pre>
+                  ) : run ? (
+                    <>
+                      {consoleTab === "results" ? (
+                        <div className="test-results">
+                          <div
+                            className={`result-banner ${run.passed ? "pass" : "fail"}`}
+                          >
+                            {run.passed ? <Check size={16} /> : <X size={16} />}
+                            <strong>
+                              {run.passed
+                                ? "All checks passed"
+                                : "Some checks didn’t pass"}
+                            </strong>
+                            <span>
+                              Level {level} · {languageNames[language]}
+                            </span>
+                            {run.passed && level < problem.levels.length && (
+                              <button
+                                onClick={() => {
+                                  setLevel(level + 1);
+                                  setRun(null);
+                                }}
+                              >
+                                Continue to level {level + 1}
+                                <ArrowUpRight size={13} />
+                              </button>
+                            )}
+                          </div>
+                          {testLines.length ? (
+                            <pre>{testLines.join("\n")}</pre>
+                          ) : (
+                            <pre>{run.output}</pre>
+                          )}
+                        </div>
+                      ) : (
+                        <pre className="raw-output">
+                          {run.output || "(Runner returned no output)"}
+                        </pre>
+                      )}
+                    </>
                   ) : (
-                    <pre className="raw-output">
-                      {run.output || "(Runner returned no output)"}
-                    </pre>
+                    <div className="console-empty">
+                      <div className="terminal-icon">
+                        <Terminal size={21} />
+                      </div>
+                      <div>
+                        <strong>Your next idea starts here.</strong>
+                        <span>
+                          Run the tests to see output, errors, and results.
+                        </span>
+                      </div>
+                      <kbd>⌘ Enter</kbd>
+                    </div>
                   )}
-                </>
-              ) : (
-                <div className="console-empty">
-                  <div className="terminal-icon">
-                    <Terminal size={21} />
-                  </div>
-                  <div>
-                    <strong>Your next idea starts here.</strong>
-                    <span>
-                      Run the tests to see output, errors, and results.
-                    </span>
-                  </div>
-                  <kbd>⌘ Enter</kbd>
                 </div>
+              </section>
+            </>
+          ) : (
+            <div className="console-collapsed">
+              <button onClick={() => setConsoleOpen(true)} title="Show console">
+                <SquareTerminal size={14} />
+                Show console
+                <ChevronDown size={13} />
+              </button>
+              {run && (
+                <span className={run.passed ? "pass" : "fail"}>
+                  {run.passed ? "All checks passed" : "Some checks didn’t pass"}
+                </span>
               )}
             </div>
-          </section>
+          )}
           <footer className="editor-status">
             <span>
               <span

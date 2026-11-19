@@ -1,0 +1,123 @@
+import { test, expect, type Locator, type Page } from "@playwright/test";
+
+async function dimensions(locator: Locator) {
+  const box = await locator.boundingBox();
+  expect(box, "The panel must have a visible bounding box").not.toBeNull();
+  return box!;
+}
+
+async function drag(page: Page, separator: Locator, dx: number, dy: number) {
+  const box = await dimensions(separator);
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + dx, y + dy, { steps: 8 });
+  await page.mouse.up();
+}
+
+test.beforeEach(async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator(".monaco-editor")).toBeVisible();
+});
+
+test("panel dividers resize all panes and restore their sizes after reload", async ({
+  page,
+}) => {
+  const requirements = page.locator(".requirements-panel");
+  const explorer = page.locator(".explorer");
+  const consolePanel = page.locator(".console-panel");
+  const originalRequirements = await dimensions(requirements);
+  await drag(
+    page,
+    page.getByRole("separator", { name: "Resize requirements", exact: true }),
+    70,
+    0,
+  );
+  await expect
+    .poll(async () => (await dimensions(requirements)).width)
+    .toBeGreaterThan(originalRequirements.width + 40);
+
+  const originalExplorer = await dimensions(explorer);
+  await drag(
+    page,
+    page.getByRole("separator", { name: "Resize file explorer", exact: true }),
+    45,
+    0,
+  );
+  await expect
+    .poll(async () => (await dimensions(explorer)).width)
+    .toBeGreaterThan(originalExplorer.width + 25);
+
+  const originalConsole = await dimensions(consolePanel);
+  await drag(
+    page,
+    page.getByRole("separator", { name: "Resize console", exact: true }),
+    0,
+    -65,
+  );
+  await expect
+    .poll(async () => (await dimensions(consolePanel)).height)
+    .toBeGreaterThan(originalConsole.height + 40);
+
+  const saved = {
+    requirements: (await dimensions(requirements)).width,
+    explorer: (await dimensions(explorer)).width,
+    console: (await dimensions(consolePanel)).height,
+  };
+  await page.reload();
+  await expect(page.locator(".monaco-editor")).toBeVisible();
+  expect((await dimensions(requirements)).width).toBeCloseTo(
+    saved.requirements,
+    0,
+  );
+  expect((await dimensions(explorer)).width).toBeCloseTo(saved.explorer, 0);
+  expect((await dimensions(consolePanel)).height).toBeCloseTo(saved.console, 0);
+  await expect(page.locator(".editor-status")).toBeInViewport();
+});
+
+test("panel dividers support keyboard resizing", async ({ page }) => {
+  for (const [name, panel, dimension, key] of [
+    ["Resize requirements", ".requirements-panel", "width", "ArrowRight"],
+    ["Resize file explorer", ".explorer", "width", "ArrowRight"],
+    ["Resize console", ".console-panel", "height", "ArrowUp"],
+  ] as const) {
+    const before = (await dimensions(page.locator(panel)))[dimension];
+    const separator = page.getByRole("separator", { name, exact: true });
+    await separator.focus();
+    await page.keyboard.press(key);
+    await expect
+      .poll(async () => (await dimensions(page.locator(panel)))[dimension])
+      .toBeGreaterThan(before);
+  }
+});
+
+test("all panes collapse, stay collapsed after reload, and can be restored", async ({
+  page,
+}) => {
+  await page
+    .getByRole("button", { name: "Collapse requirements", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Collapse file explorer", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Collapse console", exact: true })
+    .click();
+  await page.reload();
+  await expect(page.locator(".monaco-editor")).toBeVisible();
+  await expect(page.locator(".requirements-panel")).not.toBeVisible();
+  await expect(page.locator(".explorer")).not.toBeVisible();
+  await expect(page.locator(".console-content")).not.toBeVisible();
+  for (const name of [
+    "Show requirements",
+    "Show file explorer",
+    "Show console",
+  ]) {
+    await page.getByRole("button", { name, exact: true }).click();
+  }
+  await expect(page.locator(".requirements-panel")).toBeVisible();
+  await expect(page.locator(".explorer")).toBeVisible();
+  await expect(page.locator(".console-content")).toBeVisible();
+  await expect(page.locator(".editor-status")).toBeInViewport();
+});

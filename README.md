@@ -33,7 +33,7 @@ Open [127.0.0.1:4173](http://127.0.0.1:4173). Both modes also start the API on p
 - Add personal tests to the editable sandbox test file. Supplied tests are read only. Test names in the Go sandbox do not need a special prefix.
 - Click **Run tests** or press **⌘ Enter / Ctrl Enter**. The console shows the actual runner output, including your test logs, errors, assertion failures, and hidden check results.
 - Passing the cumulative checks unlocks the next level. Later-level test files are excluded from the execution snapshot until their level is selected.
-- Collapse requirements or the file explorer to make room. The practice timer is optional and can be paused.
+- Drag the dividers to resize requirements, the file explorer, and the console. Each pane can be collapsed and restored; sizes and visibility are remembered in this browser. Focus a divider and use arrow keys to resize (Shift for larger steps), or double-click it to reset the size. Run tests automatically reopens a collapsed console. The practice timer is optional and can be paused.
 
 Drafts and unlocked levels are saved in browser local storage separately for each exercise and language. Runtime workspace files live under ignored `.practice/workspaces/`. Reset affects only the selected exercise and language. Browser data clearing removes drafts and progress.
 
