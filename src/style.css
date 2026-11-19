@@ -1632,7 +1632,6 @@ h1 {
 }
 .focus-mode .problem-heading .eyebrow,
 .focus-mode .problem-heading .difficulty,
-.focus-mode .timer,
 .focus-mode .vertical-rule,
 .focus-mode .reset {
   display: none;
@@ -1676,4 +1675,12 @@ h1 {
   .focus-mode .run-button {
     padding: 7px 9px;
   }
+}
+
+.focus-mode .timer {
+  display: flex;
+  flex-shrink: 0;
+}
+.focus-mode .timer-label {
+  display: none;
 }

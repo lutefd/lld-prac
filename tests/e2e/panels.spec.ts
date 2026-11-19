@@ -134,6 +134,12 @@ test("focus mode frees vertical space, preserves workspace controls, and persist
   await expect(page.locator(".requirements-panel")).toBeVisible();
   await expect(page.locator(".monaco-editor")).toBeVisible();
   await expect(page.getByLabel("Programming language")).toBeVisible();
+  const timer = page.getByTitle("Start or pause practice timer", { exact: true });
+  await expect(timer).toBeVisible();
+  await timer.click();
+  await expect(timer).toContainText("00:01", { timeout: 3000 });
+  await timer.click();
+  await expect(timer).not.toHaveClass(/active/);
   await expect(
     page.getByRole("button", { name: "Run tests", exact: false }),
   ).toBeVisible();
