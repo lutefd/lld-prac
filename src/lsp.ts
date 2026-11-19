@@ -330,6 +330,7 @@ export class GoLanguageService {
       }),
     );
     const refresh = async () => {
+      if (document.hidden || this.disposed) return;
       try {
         const response = await fetch(
           `/api/workspace/${this.session.sessionId}/diagnostics`,

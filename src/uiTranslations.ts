@@ -73,7 +73,7 @@ export const uiTranslations: Record<string, string> = {
   "Exit focus mode": "Sair do modo de foco",
   "Enter focus mode": "Entrar no modo de foco",
   "Reset this language's solution": "Reiniciar a solução nesta linguagem",
-  "Running…": "Executando…",
+  "Queued or running…": "Na fila ou executando…",
   "Run tests": "Executar testes",
   "Collapse requirements": "Recolher requisitos",
   "Resize requirements": "Redimensionar requisitos",
@@ -112,8 +112,8 @@ export const uiTranslations: Record<string, string> = {
   "Language server ready": "Servidor de linguagem pronto",
   "Language server unavailable": "Servidor de linguagem indisponível",
   "Level {level}": "Nível {level}",
-  "Running level {level} checks and your tests…":
-    "Executando as verificações do nível {level} e seus testes…",
+  "Queued or running level {level} checks and your tests…":
+    "Na fila ou executando as verificações do nível {level} e seus testes…",
   "Continue to level {level}": "Continuar para o nível {level}",
   "{count} exercises · 3 languages": "{count} exercícios · 3 linguagens",
   "The contracts use a shared Go-style notation. Keep PascalCase API names and follow your {language} starter for types and return values.":

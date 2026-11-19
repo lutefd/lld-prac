@@ -23,20 +23,107 @@ export class LanguageServer {
   buffer: Buffer;
   process: ChildProcessWithoutNullStreams;
   closed = false;
+  suspended = false;
+  private disposed = false;
+  private command: string;
+  private args: string[];
+  private resuming?: Promise<void>;
+  private documents = new Map<string, RpcParams>();
   constructor(rootUri: string, command = "gopls", args = ["serve"]) {
     this.rootUri = rootUri;
+    this.command = command;
+    this.args = args;
     this.sequence = 0;
     this.pending = new Map();
     this.diagnostics = new Map();
     this.buffer = Buffer.alloc(0);
-    this.process = spawn(command, args, { stdio: ["pipe", "pipe", "pipe"] });
-    this.process.stdin.on("error", (error) => this.fail(error));
-    this.process.stdout.on("data", (chunk) => this.receive(chunk));
-    this.process.stderr.on("data", () => {});
-    this.process.on("error", (error) => this.fail(error));
-    this.process.on("exit", () =>
-      this.fail(new Error("Language server exited")),
-    );
+    this.process = this.start();
+  }
+
+  private start() {
+    const child = spawn(this.command, this.args, {
+      stdio: ["pipe", "pipe", "pipe"],
+      detached: process.platform !== "win32",
+    });
+    this.closed = false;
+    this.buffer = Buffer.alloc(0);
+    const current = () =>
+      this.process === child && !this.suspended && !this.disposed;
+    child.stdin.on("error", (error) => {
+      if (current()) this.fail(error);
+    });
+    child.stdout.on("data", (chunk) => {
+      if (current()) this.receive(chunk);
+    });
+    child.stderr.on("data", () => {});
+    child.on("error", (error) => {
+      if (current()) this.fail(error);
+    });
+    child.on("exit", () => {
+      // A crashed language-server wrapper can leave its analysis subprocesses
+      // behind too (for example TypeScript's tsserver).
+      this.stopProcess(child);
+      if (current()) this.fail(new Error("Language server exited"));
+    });
+    return child;
+  }
+
+  private stopProcess(child = this.process) {
+    if (process.platform !== "win32" && child.pid) {
+      try {
+        process.kill(-child.pid, "SIGKILL");
+        return;
+      } catch {
+        // The process may already have exited, or group signaling may be
+        // unavailable. Still attempt to stop the direct child.
+      }
+    }
+    try {
+      child.kill("SIGKILL");
+    } catch {
+      // Process termination is idempotent.
+    }
+  }
+
+  suspend() {
+    if (this.disposed || this.suspended || this.resuming) return;
+    this.suspended = true;
+    this.stopProcess();
+    this.fail(new Error("Language server suspended"));
+    this.diagnostics.clear();
+  }
+
+  async resume() {
+    if (this.disposed) throw new Error("Session closed");
+    if (this.resuming) return this.resuming;
+    if (!this.suspended) {
+      if (this.closed) throw new Error("Language server is unavailable");
+      return;
+    }
+    this.suspended = false;
+    this.process = this.start();
+    this.resuming = (async () => {
+      try {
+        await this.initialize();
+        if (this.disposed) throw new Error("Session closed");
+        for (const document of this.documents.values()) {
+          this.send({
+            method: "textDocument/didOpen",
+            params: { textDocument: document },
+          });
+        }
+      } catch (error) {
+        this.stopProcess();
+        this.suspended = !this.disposed;
+        this.fail(error instanceof Error ? error : new Error(String(error)));
+        throw error;
+      }
+    })();
+    try {
+      await this.resuming;
+    } finally {
+      this.resuming = undefined;
+    }
   }
 
   fail(error: Error) {
@@ -114,6 +201,23 @@ export class LanguageServer {
 
   notify(method: string, params: RpcParams) {
     this.send({ method, params });
+    const document = params.textDocument;
+    if (method === "textDocument/didOpen" && document) {
+      this.documents.set(document.uri, structuredClone(document));
+    } else if (method === "textDocument/didChange" && document) {
+      const current = this.documents.get(document.uri);
+      if (current) {
+        // The browser bridge sends full-document changes, retaining unsaved text
+        // for replay when an idle language server starts again.
+        for (const change of params.contentChanges ?? []) {
+          if (!change.range) current.text = change.text;
+        }
+        current.version = document.version;
+      }
+    } else if (method === "textDocument/didClose" && document) {
+      this.documents.delete(document.uri);
+      this.diagnostics.delete(document.uri);
+    }
   }
 
   async initialize() {
@@ -144,7 +248,9 @@ export class LanguageServer {
   }
 
   dispose() {
-    this.process.kill();
+    this.disposed = true;
+    this.documents.clear();
+    this.stopProcess();
     this.fail(new Error("Session closed"));
   }
 }

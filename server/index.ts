@@ -16,7 +16,9 @@ type Workspace = {
   problem: PracticeProblem;
   language: Language;
   running: boolean;
+  saving: Promise<void>;
   lastUsed: number;
+  closing?: boolean;
   lsp?: LanguageServer | null;
 };
 declare global {
@@ -30,15 +32,23 @@ type AppOptions = {
   workspaceRoot?: string;
   catalog?: PracticeProblem[];
   enableLsp?: boolean;
+  maxWorkspaces?: number;
+  workspaceIdleMs?: number;
+  lspIdleMs?: number;
+  cleanupIntervalMs?: number;
+  allowedOrigins?: string[];
+  queueOptions?: ConstructorParameters<typeof TestQueue>[0];
+  executeTests?: typeof runTests;
 };
 type PracticeApp = Express & { close: () => void };
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, writeFile, readdir, rm } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
 import { LanguageServer } from "./lsp.ts";
 import { runTests } from "./runner.ts";
+import { TestQueue } from "./queue.ts";
 import { problems } from "../shared/problems.ts";
 import { getFiles } from "../shared/languages.ts";
 
@@ -186,13 +196,73 @@ function restoreCreatedFiles(
   return restored;
 }
 
+function setting(name: string, fallback: number): number {
+  const value = process.env[name];
+  if (value === undefined) return fallback;
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < 1)
+    throw new Error(`${name} must be a positive integer`);
+  return parsed;
+}
+
 export function createApp({
-  workspaceRoot = path.join(projectRoot, ".practice", "workspaces"),
+  workspaceRoot = process.env.PRACTICE_WORKSPACE_ROOT ||
+    path.join(projectRoot, ".practice", "workspaces"),
   catalog = problems,
   enableLsp = true,
+  maxWorkspaces = setting("PRACTICE_MAX_WORKSPACES", 20),
+  workspaceIdleMs = setting("PRACTICE_WORKSPACE_IDLE_MS", 3600000),
+  lspIdleMs = setting("PRACTICE_LSP_IDLE_MS", 300000),
+  cleanupIntervalMs = 60000,
+  allowedOrigins = (process.env.PRACTICE_ALLOWED_ORIGINS || "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean),
+  queueOptions = {
+    concurrency: setting("PRACTICE_TEST_CONCURRENCY", 2),
+    maxWaiting: setting("PRACTICE_TEST_QUEUE_LIMIT", 10),
+    waitTimeoutMs: setting("PRACTICE_QUEUE_TIMEOUT_MS", 60000),
+  },
+  executeTests = runTests,
 }: AppOptions = {}): PracticeApp {
   const app = express() as PracticeApp;
   const sessions = new Map<string, Workspace>();
+  const queue = new TestQueue(queueOptions);
+  let opening = 0;
+  let closed = false;
+  const origins = new Set(allowedOrigins.map((value) => new URL(value).origin));
+  const hostnames = new Set([
+    "localhost",
+    "127.0.0.1",
+    "[::1]",
+    ...[...origins].map((value) => new URL(value).hostname),
+  ]);
+  // Session IDs are process-local; only remove our UUID directories on startup.
+  const storageReady = (async () => {
+    await mkdir(workspaceRoot, { recursive: true });
+    for (const entry of await readdir(workspaceRoot, { withFileTypes: true })) {
+      if (
+        entry.isDirectory() &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          entry.name,
+        )
+      )
+        await rm(path.join(workspaceRoot, entry.name), {
+          recursive: true,
+          force: true,
+        });
+    }
+  })();
+  void storageReady.catch(console.error);
+  const removeWorkspace = (session: Workspace) => {
+    session.closing = true;
+    session.lsp?.dispose();
+    sessions.delete(session.sessionId);
+    if (!session.running)
+      void rm(session.directory, { recursive: true, force: true }).catch(
+        console.error,
+      );
+  };
   const bin = (name: string) =>
     path.join(projectRoot, "node_modules", ".bin", name);
   const lspCommands: Record<Language, [string, string[]]> = {
@@ -228,8 +298,8 @@ export function createApp({
     };
   })();
   app.use("/api", (req, res, next) => {
-    if (!["localhost", "127.0.0.1", "[::1]"].includes(req.hostname))
-      return res.status(403).json({ error: "Localhost access only" });
+    if (!hostnames.has(req.hostname))
+      return res.status(403).json({ error: "Host is not allowed" });
     if (req.headers.origin) {
       let origin;
       try {
@@ -238,8 +308,9 @@ export function createApp({
         return res.status(403).json({ error: "Invalid origin" });
       }
       if (
-        !["localhost", "127.0.0.1", "[::1]"].includes(origin.hostname) ||
-        !["3001", "5173", "4173"].includes(origin.port)
+        !origins.has(origin.origin) &&
+        (!["localhost", "127.0.0.1", "[::1]"].includes(origin.hostname) ||
+          !["3001", "5173", "4173"].includes(origin.port))
       ) {
         return res.status(403).json({ error: "Origin is not allowed" });
       }
@@ -248,7 +319,7 @@ export function createApp({
   });
   app.use(express.json({ limit: "3mb" }));
   app.get("/api/health", async (_req, res) => {
-    await healthReady;
+    await Promise.all([healthReady, storageReady]);
     res.json(health);
   });
 
@@ -260,20 +331,36 @@ export function createApp({
     }),
   );
 
-  const saveFiles = async (session: Workspace, incoming: unknown = []) => {
-    const files = validateFiles(incoming, session.files);
-    await Promise.all(
-      files.map(async (file) => {
-        await writeFile(path.join(session.directory, file.path), file.content);
-        session.files.find((original) => original.path === file.path)!.content =
-          file.content;
-      }),
-    );
+  const saveFiles = (session: Workspace, incoming: unknown = []) => {
+    const files = structuredClone(validateFiles(incoming, session.files));
+    const save = session.saving.then(async () => {
+      await Promise.all(
+        files.map(async (file) => {
+          await writeFile(
+            path.join(session.directory, file.path),
+            file.content,
+          );
+          session.files.find(
+            (original) => original.path === file.path,
+          )!.content = file.content;
+        }),
+      );
+    });
+    session.saving = save.catch(() => {});
+    return save;
   };
 
   app.post("/api/workspace", async (req, res, next) => {
+    if (closed || sessions.size + opening >= maxWorkspaces)
+      return res
+        .status(503)
+        .json({ error: "Workspace limit reached; try again later" });
+    opening++;
+    let created: Workspace | undefined;
+    let directory: string | undefined;
     try {
-      await healthReady;
+      await Promise.all([healthReady, storageReady]);
+      if (closed) throw new Error("Server is shutting down");
       const problem = catalog.find((item) => item.id === req.body.problemId);
       if (!problem) return res.status(404).json({ error: "Unknown exercise" });
       const language = (req.body.language || "go") as Language;
@@ -283,7 +370,7 @@ export function createApp({
       // Validate before creating a directory or starting a language server.
       files.push(...restoreCreatedFiles(req.body.files ?? [], language, files));
       const sessionId = randomUUID();
-      const directory = path.join(workspaceRoot, sessionId);
+      directory = path.join(workspaceRoot, sessionId);
       await mkdir(directory, { recursive: true });
       for (const file of files) {
         if (
@@ -306,8 +393,10 @@ export function createApp({
         problem,
         language,
         running: false,
+        saving: Promise.resolve(),
         lastUsed: Date.now(),
       };
+      created = session;
       await saveFiles(session, req.body.files);
       if (health.languages[language].lsp && enableLsp) {
         try {
@@ -318,6 +407,7 @@ export function createApp({
           session.lsp = null;
         }
       }
+      if (closed) throw new Error("Server is shutting down");
       sessions.set(sessionId, session);
       res.json({
         sessionId,
@@ -329,7 +419,14 @@ export function createApp({
         lspAvailable: Boolean(session.lsp),
       });
     } catch (error) {
+      created?.lsp?.dispose();
+      if (directory)
+        await rm(directory, { recursive: true, force: true }).catch(
+          console.error,
+        );
       next(error);
+    } finally {
+      opening--;
     }
   });
 
@@ -339,13 +436,17 @@ export function createApp({
       return res
         .status(404)
         .json({ error: "Workspace expired; reopen the exercise" });
-    session.lastUsed = Date.now();
+    if (req.method !== "GET") session.lastUsed = Date.now();
     req.workspace = session;
     next();
   });
 
   app.post("/api/workspace/:id/files", async (req, res, next) => {
     try {
+      if (req.workspace.running)
+        return res
+          .status(409)
+          .json({ error: "Tests are already queued or running" });
       await saveFiles(req.workspace, req.body.files);
       res.json({ saved: true });
     } catch (error) {
@@ -354,6 +455,10 @@ export function createApp({
   });
   app.post("/api/workspace/:id/create-file", async (req, res, next) => {
     const session = req.workspace;
+    if (session.running)
+      return res
+        .status(409)
+        .json({ error: "Tests are already queued or running" });
     try {
       const filePath = validateNewFile(
         req.body.path,
@@ -401,24 +506,32 @@ export function createApp({
       )
         return res.status(400).json({ error: "Invalid level" });
       session.running = true;
-      await saveFiles(session, req.body.files);
+      validateFiles(req.body.files ?? [], session.files);
       res.json(
-        await runTests(session.directory, session.language, level, {
-          suppliedFiles: session.files
-            .filter((file) => !file.userCreated)
-            .map((file) => file.path),
+        await queue.run(async () => {
+          if (session.closing) throw new Error("Workspace was closed");
+          await saveFiles(session, req.body.files);
+          return executeTests(session.directory, session.language, level, {
+            suppliedFiles: session.files
+              .filter((file) => !file.userCreated)
+              .map((file) => file.path),
+          });
         }),
       );
     } catch (error) {
       next(error);
     } finally {
       session.running = false;
+      if (session.closing)
+        await rm(session.directory, { recursive: true, force: true }).catch(
+          console.error,
+        );
     }
   });
   app.post("/api/workspace/:id/lsp", async (req, res, next) => {
     try {
       const session = req.workspace;
-      if (!session.lsp || session.lsp.closed)
+      if (!session.lsp)
         return res.status(503).json({
           error: "Language server unavailable; install it and restart the app",
         });
@@ -441,6 +554,7 @@ export function createApp({
           .status(400)
           .json({ error: "Document is outside this workspace" });
       }
+      await session.lsp.resume();
       if (notifications.has(method)) {
         session.lsp.notify(method, params);
         res.json({ result: null });
@@ -466,26 +580,31 @@ export function createApp({
     });
   });
   app.delete("/api/workspace/:id", (req, res) => {
-    req.workspace.lsp?.dispose();
-    sessions.delete(req.workspace.sessionId);
+    removeWorkspace(req.workspace);
     res.json({ closed: true });
   });
   const errors: ErrorRequestHandler = (error: Error, _req, res, _next) => {
-    res.status(400).json({ error: error.message });
+    const status =
+      "status" in error && typeof error.status === "number"
+        ? error.status
+        : 400;
+    res.status(status).json({ error: error.message });
   };
   app.use(errors);
   const cleanup = setInterval(() => {
-    for (const [id, session] of sessions)
-      if (!session.running && Date.now() - session.lastUsed > 60 * 60 * 1000) {
-        session.lsp?.dispose();
-        sessions.delete(id);
-      }
-  }, 60000);
+    for (const session of sessions.values()) {
+      if (session.running) continue;
+      const idle = Date.now() - session.lastUsed;
+      if (idle > workspaceIdleMs) removeWorkspace(session);
+      else if (idle > lspIdleMs) session.lsp?.suspend();
+    }
+  }, cleanupIntervalMs);
   cleanup.unref();
   app.close = () => {
+    closed = true;
     clearInterval(cleanup);
-    for (const session of sessions.values()) session.lsp?.dispose();
-    sessions.clear();
+    queue.close();
+    for (const session of sessions.values()) removeWorkspace(session);
   };
   return app;
 }
@@ -495,8 +614,10 @@ if (
   path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 ) {
   const app = createApp();
-  const server = app.listen(3001, "127.0.0.1", () =>
-    console.log("Practice API: http://127.0.0.1:3001"),
+  const server = app.listen(
+    3001,
+    process.env.PRACTICE_HOST || "127.0.0.1",
+    () => console.log("Practice API: http://127.0.0.1:3001"),
   );
   for (const signal of ["SIGINT", "SIGTERM"])
     process.on(signal, () => {

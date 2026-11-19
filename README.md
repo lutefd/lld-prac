@@ -87,7 +87,36 @@ Set `PRACTICE_DOCKER_CONTEXT` to your Docker context name, or omit it to use you
 
 Docker runs use a read-only workspace and root filesystem, a writable temporary filesystem, no network, CPU/memory/process limits, dropped capabilities, and a timeout. Language servers still run locally. Container images must be available before starting a run. A missing daemon or image is reported in the console; Docker mode does not silently fall back to native execution.
 
-## Development
+## Deploy on a laptop with Cloudflared
+
+The Compose setup serves the built frontend with nginx and forwards `/api/` to a private backend. Only the frontend joins your existing Cloudflared Docker network; neither service publishes a host port. The backend and frontend also share a private app network. The laptop needs Linux, Docker Engine, and Docker Compose; Node, Go, and Python are included in the images. Browser requests use relative `/api/...` URLs in both modes: local development uses Vite’s proxy to `127.0.0.1:3001`, while Docker uses nginx’s proxy to `backend:3001`. `npm run dev` and `npm start` continue to work without Docker.
+
+```sh
+cp .env.example .env
+# Edit .env: set CLOUDFLARED_NETWORK to your existing network name,
+# and PRACTICE_ALLOWED_ORIGINS to your exact public URL.
+sudo mkdir -p /var/lib/workbench/runs
+docker pull golang:1.26-alpine
+docker pull python:3.14-alpine
+docker pull node:24-alpine
+docker compose up -d --build
+```
+
+In your existing Cloudflared tunnel, point the public hostname at **`http://workbench:80`**. Keep the original HTTP Host header (do not override it to `workbench`). Cloudflared must already be attached to the network named by `CLOUDFLARED_NETWORK`; Compose deliberately reuses that external network. Set `PRACTICE_ALLOWED_ORIGINS` to the browser origin, such as `https://practice.example.com`, without a trailing slash. It accepts comma-separated origins. TLS terminates at Cloudflare.
+
+The backend defaults to 20 workspaces, two concurrent test runs, and ten waiting runs. A workspace can have only one queued or running submission. Queue waits expire after 60 seconds; execution has its own 20-second timeout after a slot opens. Limits can be changed in `.env`, then applied with `docker compose up -d`. Waiting runs live in memory and are lost on restart. Language servers suspend after five minutes without editor activity; workspaces expire after an hour of inactivity, and their server files are deleted. Browser drafts and progress remain in local storage.
+
+`PRACTICE_RUN_ROOT` must be an absolute Linux host directory mounted at the **same absolute path** inside the backend: test containers are siblings launched by the host daemon and bind-mount snapshots from that path. If changing it, create the new directory before starting Compose. Workspace files use a separate named volume. Do not run multiple backend replicas against these directories.
+
+This deployment is for trusted, invited users. The backend mounts the host Docker socket to launch isolated test containers; that socket grants control of the host Docker daemon. Language servers run in the backend container, and this is not a hardened public code-execution service. Restrict the hostname with Cloudflare Access for your group. Runner containers have networking disabled and do not join the Cloudflared network.
+
+```sh
+docker compose logs -f backend
+docker compose down            # stop; retain workspace volume
+docker compose up -d --build   # rebuild and restart after updating the checkout
+```
+
+## Development checks
 
 ```sh
 npm test                 # catalog and runner/API checks

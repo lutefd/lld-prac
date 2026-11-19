@@ -1,0 +1,63 @@
+services:
+  workbench:
+    build:
+      context: .
+      target: frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - cloudflared
+      - app
+
+  backend:
+    init: true
+    stop_grace_period: 30s
+    build:
+      context: .
+      target: backend
+    restart: unless-stopped
+    environment:
+      PRACTICE_HOST: 0.0.0.0
+      PRACTICE_ALLOWED_ORIGINS: ${PRACTICE_ALLOWED_ORIGINS:?Set your public URL in .env}
+      PRACTICE_RUNNER: docker
+      PRACTICE_WORKSPACE_ROOT: /app/.practice/workspaces
+      PRACTICE_RUN_ROOT: ${PRACTICE_RUN_ROOT:-/var/lib/workbench/runs}
+      PRACTICE_MAX_WORKSPACES: ${PRACTICE_MAX_WORKSPACES:-20}
+      PRACTICE_TEST_CONCURRENCY: ${PRACTICE_TEST_CONCURRENCY:-2}
+      PRACTICE_TEST_QUEUE_LIMIT: ${PRACTICE_TEST_QUEUE_LIMIT:-10}
+      PRACTICE_QUEUE_TIMEOUT_MS: ${PRACTICE_QUEUE_TIMEOUT_MS:-60000}
+      PRACTICE_LSP_IDLE_MS: ${PRACTICE_LSP_IDLE_MS:-300000}
+      PRACTICE_WORKSPACE_IDLE_MS: ${PRACTICE_WORKSPACE_IDLE_MS:-3600000}
+    volumes:
+      - workspaces:/app/.practice/workspaces
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Sibling runner containers must see snapshots at the exact same host path.
+      - type: bind
+        source: ${PRACTICE_RUN_ROOT:-/var/lib/workbench/runs}
+        target: ${PRACTICE_RUN_ROOT:-/var/lib/workbench/runs}
+    networks:
+      - app
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3001/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+
+volumes:
+  workspaces:
+
+networks:
+  app:
+    internal: true
+  cloudflared:
+    external: true
+    name: ${CLOUDFLARED_NETWORK:-cloudflared}

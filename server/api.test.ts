@@ -213,3 +213,164 @@ test("API rejects external origins and hides test sources from problem metadata 
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test("hosted origins are explicit and workspace capacity includes simultaneous opens", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "lld-hosted-test-"));
+  const app = createApp({
+    workspaceRoot: directory,
+    enableLsp: false,
+    maxWorkspaces: 1,
+    allowedOrigins: ["https://practice.example.com"],
+  });
+  const server = app.listen(0, "127.0.0.1");
+  await new Promise<void>((resolve) => server.once("listening", resolve));
+  const address = server.address() as import("node:net").AddressInfo;
+  const base = `http://127.0.0.1:${address.port}`;
+  try {
+    const headers = {
+      Host: "practice.example.com",
+      Origin: "https://practice.example.com",
+      "Content-Type": "application/json",
+    };
+    assert.equal((await fetch(`${base}/api/health`, { headers })).status, 200);
+    assert.equal(
+      (
+        await fetch(`${base}/api/health`, {
+          headers: { ...headers, Origin: "https://other.example.com" },
+        })
+      ).status,
+      403,
+    );
+    const responses = await Promise.all(
+      [1, 2].map(() =>
+        fetch(`${base}/api/workspace`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            problemId: "bounded-stack",
+            language: "python",
+            files: [],
+          }),
+        }),
+      ),
+    );
+    assert.deepEqual(responses.map((r) => r.status).sort(), [200, 503]);
+    const workspace = await responses.find((r) => r.status === 200)!.json();
+    await fetch(`${base}/api/workspace/${workspace.sessionId}`, {
+      method: "DELETE",
+      headers,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    await assert.rejects(
+      readFile(path.join(directory, workspace.sessionId, "implementation.py")),
+      { code: "ENOENT" },
+    );
+  } finally {
+    app.close();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("API queues globally, locks queued workspaces and preserves queue errors", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "lld-queue-api-"));
+  let release!: () => void;
+  let started!: () => void;
+  const entered = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  const blocked = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let calls = 0;
+  const app = createApp({
+    workspaceRoot: directory,
+    enableLsp: false,
+    queueOptions: { concurrency: 1, maxWaiting: 1, waitTimeoutMs: 500 },
+    executeTests: async () => {
+      calls++;
+      started();
+      await blocked;
+      return { passed: true, output: "ok", durationMs: 1, timedOut: false };
+    },
+  });
+  const server = app.listen(0, "127.0.0.1");
+  await new Promise<void>((resolve) => server.once("listening", resolve));
+  const address = server.address() as import("node:net").AddressInfo;
+  const base = `http://127.0.0.1:${address.port}`;
+  const post = (route: string, body: unknown) =>
+    fetch(`${base}/api${route}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  try {
+    const ids = [];
+    for (let i = 0; i < 3; i++) {
+      const response = await post("/workspace", {
+        problemId: "bounded-stack",
+        language: "python",
+        files: [],
+      });
+      assert.equal(response.status, 200);
+      ids.push((await response.json()).sessionId);
+    }
+    const run = (id: string) =>
+      post(`/workspace/${id}/run`, { level: 1, files: [] });
+    const first = run(ids[0]);
+    await entered;
+    const second = run(ids[1]);
+    // Wait for the queue lock to be observable rather than assuming fetch ordering.
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    assert.equal((await run(ids[1])).status, 409);
+    assert.equal((await run(ids[2])).status, 503);
+    assert.equal((await second).status, 504);
+    assert.equal(calls, 1);
+    release();
+    assert.equal((await first).status, 200);
+    assert.equal((await run(ids[1])).status, 200);
+  } finally {
+    release();
+    app.close();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("diagnostics polling does not prevent idle workspace expiry", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "lld-idle-api-"));
+  const app = createApp({
+    workspaceRoot: directory,
+    enableLsp: false,
+    workspaceIdleMs: 100,
+    cleanupIntervalMs: 10,
+  });
+  const server = app.listen(0, "127.0.0.1");
+  await new Promise<void>((resolve) => server.once("listening", resolve));
+  const address = server.address() as import("node:net").AddressInfo;
+  const base = `http://127.0.0.1:${address.port}`;
+  try {
+    const response = await fetch(`${base}/api/workspace`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        problemId: "bounded-stack",
+        language: "python",
+        files: [],
+      }),
+    });
+    assert.equal(response.status, 200);
+    const { sessionId } = await response.json();
+    let status = 200;
+    for (let i = 0; i < 20 && status === 200; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      status = (await fetch(`${base}/api/workspace/${sessionId}/diagnostics`))
+        .status;
+    }
+    assert.equal(status, 404);
+  } finally {
+    app.close();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    await rm(directory, { recursive: true, force: true });
+  }
+});

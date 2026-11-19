@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { performance } from "node:perf_hooks";
-import { mkdtemp, cp, readdir, rm } from "node:fs/promises";
+import { mkdtemp, mkdir, cp, readdir, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -141,7 +141,9 @@ export async function runTests(
 ): Promise<RunResult> {
   if (!Number.isInteger(level) || level < 1 || level > 9)
     throw new Error("Invalid test level");
-  const snapshot = await mkdtemp(path.join(os.tmpdir(), "lld-run-"));
+  const runRoot = process.env.PRACTICE_RUN_ROOT || os.tmpdir();
+  await mkdir(runRoot, { recursive: true });
+  const snapshot = await mkdtemp(path.join(runRoot, "lld-run-"));
   let containerName: string | undefined;
   const dockerPrefix = process.env.PRACTICE_DOCKER_CONTEXT
     ? ["--context", process.env.PRACTICE_DOCKER_CONTEXT]

@@ -309,7 +309,7 @@ function Workspace({
     [draftKey],
   );
   useEffect(() => {
-    if (!session || saved) return;
+    if (!session || saved || running) return;
     const save = ++saveGeneration.current;
     const id = setTimeout(() => {
       api(`/workspace/${session.sessionId}/files`, {
@@ -321,7 +321,7 @@ function Workspace({
         .catch((e) => setError(e.message));
     }, 650);
     return () => clearTimeout(id);
-  }, [files, session, saved]);
+  }, [files, session, saved, running]);
   const runTests = useCallback(async () => {
     if (!session || running) return;
     const gen = generation.current;
@@ -337,7 +337,6 @@ function Workspace({
       });
       if (gen !== generation.current) return;
       setRun(result);
-      setSaved(true);
       if (result.passed) {
         const next = Math.min(level + 1, problem.levels.length + 1);
         setUnlocked((u) => Math.max(u, next));
@@ -541,7 +540,7 @@ function Workspace({
             ) : (
               <Play size={14} fill="currentColor" />
             )}
-            {running ? t("Running…") : t("Run tests")}
+            {running ? t("Queued or running…") : t("Run tests")}
             <kbd>⌘ ↵</kbd>
           </button>
         </div>
@@ -945,9 +944,12 @@ function Workspace({
                       <LoaderCircle size={19} className="spin" />
                       <div>
                         <strong>
-                          {t("Running level {level} checks and your tests…", {
-                            level,
-                          })}
+                          {t(
+                            "Queued or running level {level} checks and your tests…",
+                            {
+                              level,
+                            },
+                          )}
                         </strong>
                         <span>
                           {t(
