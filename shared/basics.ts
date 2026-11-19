@@ -1,0 +1,471 @@
+import type { PracticeProblem } from "./problems.ts";
+import { caseFiles, type Command } from "./case-support.ts";
+
+const level = (
+  title: string,
+  description: string,
+  requirements: string[],
+  input: string,
+  output: string,
+) => ({ title, description, requirements, examples: [{ input, output }] });
+const eq = (expression: string, expected: unknown): Command => ({
+  kind: "eq",
+  expression,
+  expected,
+});
+const run = (expression: string): Command => ({ kind: "run", expression });
+const setup = (expression: string): Command => ({
+  kind: "assign",
+  name: "s",
+  expression,
+});
+
+export const basicApi: Record<string, [string, string, string[]]> = {
+  "bounded-stack": [
+    "Stack",
+    "capacity:n",
+    [
+      "Push|value:s|b",
+      "Pop||pair",
+      "Peek||pair",
+      "Size||n",
+      "SetCapacity|capacity:n|b",
+    ],
+  ],
+  "fifo-queue": [
+    "Queue",
+    "",
+    [
+      "Enqueue|value:s|b",
+      "Dequeue||pair",
+      "Front||pair",
+      "Size||n",
+      "Items||strings",
+      "Take|limit:n|strings",
+    ],
+  ],
+};
+
+export const basicTests: Record<string, Command[][]> = {
+  "bounded-stack": [
+    [
+      setup("NewStack(2)"),
+      eq("s.Pop()", ["", false]),
+      eq('s.Push("first")', true),
+      eq('s.Push("second")', true),
+      eq('s.Push("overflow")', false),
+      eq("s.Pop()", ["second", true]),
+      eq("s.Pop()", ["first", true]),
+      eq("s.Pop()", ["", false]),
+    ],
+    [
+      setup("NewStack(2)"),
+      eq("s.Peek()", ["", false]),
+      eq("s.Size()", 0),
+      run('s.Push("a")'),
+      run('s.Push("b")'),
+      eq("s.Peek()", ["b", true]),
+      eq("s.Peek()", ["b", true]),
+      eq("s.Size()", 2),
+      eq("s.Pop()", ["b", true]),
+      eq("s.Size()", 1),
+    ],
+    [
+      setup("NewStack(2)"),
+      run('s.Push("a")'),
+      run('s.Push("b")'),
+      eq("s.SetCapacity(1)", false),
+      eq("s.SetCapacity(-1)", false),
+      eq("s.Size()", 2),
+      eq("s.SetCapacity(3)", true),
+      eq('s.Push("c")', true),
+      eq("s.Pop()", ["c", true]),
+      eq("s.SetCapacity(2)", true),
+      eq('s.Push("d")', false),
+      eq("s.Pop()", ["b", true]),
+    ],
+  ],
+  "fifo-queue": [
+    [
+      setup("NewQueue()"),
+      eq("s.Dequeue()", ["", false]),
+      eq('s.Enqueue("")', false),
+      eq('s.Enqueue("a")', true),
+      eq('s.Enqueue("b")', true),
+      eq("s.Dequeue()", ["a", true]),
+      eq("s.Dequeue()", ["b", true]),
+      eq("s.Dequeue()", ["", false]),
+    ],
+    [
+      setup("NewQueue()"),
+      eq("s.Front()", ["", false]),
+      eq("s.Size()", 0),
+      run('s.Enqueue("a")'),
+      run('s.Enqueue("b")'),
+      eq("s.Front()", ["a", true]),
+      eq("s.Front()", ["a", true]),
+      eq("s.Size()", 2),
+      run("s.Dequeue()"),
+      eq("s.Front()", ["b", true]),
+      eq("s.Size()", 1),
+    ],
+    [
+      setup("NewQueue()"),
+      run('s.Enqueue("a")'),
+      run('s.Enqueue("b")'),
+      run('s.Enqueue("c")'),
+      eq("s.Items()", ["a", "b", "c"]),
+      eq("s.Take(0)", []),
+      eq("s.Take(-1)", []),
+      eq("s.Size()", 3),
+      eq("s.Take(2)", ["a", "b"]),
+      eq("s.Items()", ["c"]),
+      eq("s.Take(5)", ["c"]),
+      eq("s.Size()", 0),
+      eq("s.Take(1)", []),
+    ],
+  ],
+};
+
+export const basicHidden: Record<string, Command[][]> = {
+  "bounded-stack": [
+    [
+      { kind: "assign", name: "z", expression: "NewStack(0)" },
+      eq('z.Push("a")', false),
+      eq("z.Pop()", ["", false]),
+      setup("NewStack(1)"),
+      eq('s.Push("")', true),
+      eq('s.Push("b")', false),
+      eq("s.Pop()", ["", true]),
+      eq('s.Push("b")', true),
+      eq("s.Pop()", ["b", true]),
+    ],
+    [
+      setup("NewStack(1)"),
+      run('s.Push("")'),
+      eq("s.Peek()", ["", true]),
+      eq("s.Size()", 1),
+      eq('s.Push("x")', false),
+      eq("s.Size()", 1),
+      run("s.Pop()"),
+      eq("s.Peek()", ["", false]),
+      eq("s.Size()", 0),
+    ],
+    [
+      setup("NewStack(1)"),
+      eq("s.SetCapacity(0)", true),
+      eq('s.Push("a")', false),
+      eq("s.SetCapacity(1)", true),
+      run('s.Push("a")'),
+      eq("s.SetCapacity(0)", false),
+      eq("s.SetCapacity(1)", true),
+      eq("s.Peek()", ["a", true]),
+      eq('s.Push("b")', false),
+      run("s.Pop()"),
+      eq("s.SetCapacity(0)", true),
+    ],
+  ],
+  "fifo-queue": [
+    [
+      setup("NewQueue()"),
+      run('s.Enqueue("same")'),
+      run('s.Enqueue("same")'),
+      eq("s.Dequeue()", ["same", true]),
+      eq("s.Dequeue()", ["same", true]),
+      eq('s.Enqueue("again")', true),
+      eq("s.Dequeue()", ["again", true]),
+    ],
+    [
+      setup("NewQueue()"),
+      run('s.Enqueue("a")'),
+      eq('s.Enqueue("")', false),
+      eq("s.Size()", 1),
+      eq("s.Front()", ["a", true]),
+      run("s.Dequeue()"),
+      eq("s.Size()", 0),
+      eq("s.Front()", ["", false]),
+    ],
+    [
+      setup("NewQueue()"),
+      run('s.Enqueue("a")'),
+      run('s.Enqueue("b")'),
+      { kind: "assign", name: "snapshot", expression: "s.Items()" },
+      run('snapshot[0] = "changed"'),
+      eq("s.Front()", ["a", true]),
+      { kind: "assign", name: "taken", expression: "s.Take(1)" },
+      run('taken[0] = "changed"'),
+      eq("s.Items()", ["b"]),
+      run('s.Enqueue("c")'),
+      eq("s.Take(2)", ["b", "c"]),
+      eq("s.Front()", ["", false]),
+    ],
+  ],
+};
+
+export const basicProblems: PracticeProblem[] = [
+  {
+    id: "bounded-stack",
+    title: "Bounded stack",
+    category: "Fundamentals",
+    difficulty: "Easy",
+    duration: 30,
+    packageName: "practice",
+    summary:
+      "Learn last-in, first-out storage, safe queries, and capacity changes without losing items.",
+    tags: ["Beginner", "Stack", "Capacity"],
+    levels: [
+      level(
+        "Push and pop",
+        "Build a last-in, first-out collection of strings.",
+        [
+          "NewStack(capacity int) *Stack starts empty with a nonnegative capacity. Zero capacity is allowed.",
+          "Push(value string) bool adds one item if there is space. Empty strings and duplicate values are valid; a full stack returns false without changing its contents.",
+          'Pop() (string, bool) removes and returns the most recently pushed item. An empty stack returns ("", false); popping an empty stack changes nothing.',
+        ],
+        'NewStack(2); Push("a"); Push("b"); Pop(); Pop()',
+        'true; true; ("b", true); ("a", true)',
+      ),
+      level(
+        "Inspect without removing",
+        "Add queries that leave stack order intact.",
+        [
+          'Peek() (string, bool) returns the top item without removing it, or ("", false) when empty.',
+          "Size() int returns the number of stored items. Repeated Peek and Size calls never change contents or capacity.",
+        ],
+        'Push("a"); Peek(); Peek(); Size()',
+        '("a", true); ("a", true); 1',
+      ),
+      level(
+        "Change capacity safely",
+        "Resize the bound while preserving every stored item.",
+        [
+          "SetCapacity(capacity int) bool accepts any nonnegative capacity greater than or equal to Size(), including the current capacity.",
+          "Negative capacities or capacities smaller than Size() return false and preserve the old capacity and contents. Successful changes preserve item order.",
+          "An empty stack can shrink to zero and grow again. Push uses the latest accepted capacity.",
+        ],
+        'NewStack(1); Push("a"); SetCapacity(0); SetCapacity(2); Push("b"); Pop()',
+        'true; false; true; true; ("b", true)',
+      ),
+    ],
+    files: caseFiles(
+      `type Stack struct {}\nfunc NewStack(capacity int) *Stack { return &Stack{} }\nfunc (s *Stack) Push(value string) bool { return false }\nfunc (s *Stack) Pop() (string, bool) { return "", false }\nfunc (s *Stack) Peek() (string, bool) { return "", false }\nfunc (s *Stack) Size() int { return 0 }\nfunc (s *Stack) SetCapacity(capacity int) bool { return false }`,
+      [
+        's:=NewStack(2); if _,ok:=s.Pop(); ok {t.Fatal("empty pop succeeded")}; if !s.Push("first") || !s.Push("second") || s.Push("overflow") {t.Fatal("capacity incorrect")}; if v,ok:=s.Pop(); !ok || v!="second" {t.Fatal("must pop newest item")}; if v,ok:=s.Pop(); !ok || v!="first" {t.Fatal("overflow changed contents")}; if _,ok:=s.Pop(); ok {t.Fatal("empty pop succeeded")}',
+        's:=NewStack(2); if _,ok:=s.Peek(); ok {t.Fatal("empty peek succeeded")}; if s.Size()!=0 {t.Fatal("initial size incorrect")}; s.Push("a"); s.Push("b"); for i:=0;i<2;i++ {if v,ok:=s.Peek(); !ok || v!="b" {t.Fatal("peek incorrect")}}; if s.Size()!=2 {t.Fatal("peek removed item")}; s.Pop(); if s.Size()!=1 {t.Fatal("pop size incorrect")}',
+        's:=NewStack(2); s.Push("a"); s.Push("b"); if s.SetCapacity(1) || s.SetCapacity(-1) || s.Size()!=2 {t.Fatal("invalid resize accepted")}; if !s.SetCapacity(3) || !s.Push("c") {t.Fatal("growth failed")}; if v,ok:=s.Pop(); !ok || v!="c" {t.Fatal("growth changed order")}; if !s.SetCapacity(2) || s.Push("d") {t.Fatal("new bound not applied")}; if v,ok:=s.Pop(); !ok || v!="b" {t.Fatal("resize lost contents")}',
+      ],
+      [
+        'z:=NewStack(0); if z.Push("a") {t.Fatal("zero capacity accepted push")}; s:=NewStack(1); if !s.Push("") || s.Push("b") {t.Fatal("empty value or overflow incorrect")}; if v,ok:=s.Pop(); !ok || v!="" {t.Fatal("empty value confused with missing")}; if !s.Push("b") {t.Fatal("pop did not free capacity")}',
+        's:=NewStack(1); s.Push(""); if v,ok:=s.Peek(); !ok || v!="" || s.Size()!=1 {t.Fatal("empty string query incorrect")}; if s.Push("x") || s.Size()!=1 {t.Fatal("rejected push changed size")}; s.Pop(); if _,ok:=s.Peek(); ok {t.Fatal("popped item still visible")}; if s.Size()!=0 {t.Fatal("empty size incorrect")}',
+        's:=NewStack(1); if !s.SetCapacity(0) || s.Push("a") || !s.SetCapacity(1) {t.Fatal("empty resizing incorrect")}; s.Push("a"); if s.SetCapacity(0) || !s.SetCapacity(1) || s.Push("b") {t.Fatal("capacity boundary incorrect")}; if v,ok:=s.Peek(); !ok || v!="a" {t.Fatal("failed resize lost top")}; s.Pop(); if !s.SetCapacity(0) {t.Fatal("cannot shrink after pop")}',
+      ],
+    ),
+  },
+  {
+    id: "fifo-queue",
+    title: "FIFO queue",
+    category: "Fundamentals",
+    difficulty: "Easy",
+    duration: 30,
+    packageName: "practice",
+    summary:
+      "Learn first-in, first-out storage, inspect waiting items, and process a batch in arrival order.",
+    tags: ["Beginner", "Queue", "Batch operations"],
+    levels: [
+      level(
+        "Join and leave the queue",
+        "Store strings in arrival order with no capacity limit.",
+        [
+          "NewQueue() *Queue starts empty. Enqueue(value string) bool appends a nonempty string and returns true; empty strings return false without changing the queue. Duplicate values are allowed.",
+          'Dequeue() (string, bool) removes and returns the oldest waiting value, or ("", false) when empty. Removing from an empty queue changes nothing.',
+        ],
+        'Enqueue("a"); Enqueue("b"); Dequeue(); Dequeue()',
+        'true; true; ("a", true); ("b", true)',
+      ),
+      level(
+        "Inspect the waiting line",
+        "Read the next item and the current queue length.",
+        [
+          'Front() (string, bool) returns the oldest waiting value without removing it, or ("", false) when empty.',
+          "Size() int counts waiting items, including duplicates. Front and Size never change queue contents or ordering.",
+        ],
+        'Enqueue("a"); Enqueue("b"); Front(); Size()',
+        '("a", true); 2',
+      ),
+      level(
+        "Process batches",
+        "Return snapshots and remove several items at once.",
+        [
+          "Items() []string returns all waiting values in arrival order as a defensive copy. Mutating the result must not change the queue.",
+          "Take(limit int) []string removes and returns up to limit oldest items in arrival order. A limit larger than Size() removes every waiting item.",
+          "A zero or negative limit returns an empty slice and changes nothing. Empty results may be nil or empty slices. Returned batches must not share mutable storage with remaining queue items.",
+        ],
+        'Enqueue("a"); Enqueue("b"); Enqueue("c"); Take(2); Items()',
+        '["a", "b"]; ["c"]',
+      ),
+    ],
+    files: caseFiles(
+      `type Queue struct {}\nfunc NewQueue() *Queue { return &Queue{} }\nfunc (q *Queue) Enqueue(value string) bool { return false }\nfunc (q *Queue) Dequeue() (string, bool) { return "", false }\nfunc (q *Queue) Front() (string, bool) { return "", false }\nfunc (q *Queue) Size() int { return 0 }\nfunc (q *Queue) Items() []string { return nil }\nfunc (q *Queue) Take(limit int) []string { return nil }`,
+      [
+        'q:=NewQueue(); if _,ok:=q.Dequeue(); ok {t.Fatal("empty dequeue succeeded")}; if q.Enqueue("") || !q.Enqueue("a") || !q.Enqueue("b") {t.Fatal("enqueue validation incorrect")}; if v,ok:=q.Dequeue(); !ok || v!="a" {t.Fatal("must dequeue oldest item")}; if v,ok:=q.Dequeue(); !ok || v!="b" {t.Fatal("second item incorrect")}; if _,ok:=q.Dequeue(); ok {t.Fatal("empty dequeue succeeded")}',
+        'q:=NewQueue(); if _,ok:=q.Front(); ok {t.Fatal("empty front succeeded")}; if q.Size()!=0 {t.Fatal("initial size incorrect")}; q.Enqueue("a"); q.Enqueue("b"); for i:=0;i<2;i++ {if v,ok:=q.Front(); !ok || v!="a" {t.Fatal("front incorrect")}}; if q.Size()!=2 {t.Fatal("query removed item")}; q.Dequeue(); if v,ok:=q.Front(); !ok || v!="b" || q.Size()!=1 {t.Fatal("dequeue did not update front")}',
+        'q:=NewQueue(); q.Enqueue("a"); q.Enqueue("b"); q.Enqueue("c"); a:=q.Items(); if len(a)!=3 || a[0]!="a" || a[1]!="b" || a[2]!="c" {t.Fatal("snapshot order incorrect")}; if len(q.Take(0))!=0 || len(q.Take(-1))!=0 || q.Size()!=3 {t.Fatal("invalid batch changed queue")}; b:=q.Take(2); if len(b)!=2 || b[0]!="a" || b[1]!="b" {t.Fatal("batch order incorrect")}; a=q.Items(); if len(a)!=1 || a[0]!="c" {t.Fatal("batch removed wrong items")}; b=q.Take(5); if len(b)!=1 || b[0]!="c" || q.Size()!=0 || len(q.Take(1))!=0 {t.Fatal("oversized or empty batch incorrect")}',
+      ],
+      [
+        'q:=NewQueue(); q.Enqueue("same"); q.Enqueue("same"); for i:=0;i<2;i++ {if v,ok:=q.Dequeue(); !ok || v!="same" {t.Fatal("duplicates must be distinct items")}}; if !q.Enqueue("again") {t.Fatal("drained queue not reusable")}; if v,ok:=q.Dequeue(); !ok || v!="again" {t.Fatal("reused queue incorrect")}',
+        'q:=NewQueue(); q.Enqueue("a"); if q.Enqueue("") || q.Size()!=1 {t.Fatal("invalid enqueue changed size")}; q.Dequeue(); if q.Size()!=0 {t.Fatal("size not decremented")}; if _,ok:=q.Front(); ok {t.Fatal("drained front not empty")}',
+        'q:=NewQueue(); q.Enqueue("a"); q.Enqueue("b"); snapshot:=q.Items(); if len(snapshot)!=2 {t.Fatal("snapshot missing")}; snapshot[0]="changed"; if v,ok:=q.Front(); !ok || v!="a" {t.Fatal("snapshot leaked mutable queue")}; taken:=q.Take(1); if len(taken)!=1 {t.Fatal("batch missing")}; taken[0]="changed"; if v,ok:=q.Front(); !ok || v!="b" {t.Fatal("batch corrupted remaining queue")}; q.Enqueue("c"); a:=q.Take(2); if len(a)!=2 || a[0]!="b" || a[1]!="c" {t.Fatal("batch reuse order incorrect")}',
+      ],
+    ),
+  },
+];
+
+basicApi["parcel-locker"] = [
+  "Locker",
+  "small:n,medium:n,large:n",
+  [
+    "Store|id:s,size:s|pair",
+    "Available||n",
+    "Code|id:s|pair",
+    "Pickup|code:s|pair",
+    "StoreUntil|id:s,size:s,expiresAt:n,now:n|pair",
+    "Expire|now:n|strings",
+  ],
+];
+basicTests["parcel-locker"] = [
+  [
+    setup("NewLocker(1,1,1)"),
+    eq("s.Available()", 3),
+    eq('s.Store("a","S")', ["S1", true]),
+    eq('s.Store("b","S")', ["M1", true]),
+    eq('s.Store("c","L")', ["L1", true]),
+    eq('s.Store("d","S")', ["", false]),
+    eq("s.Available()", 0),
+  ],
+  [
+    setup("NewLocker(1,0,0)"),
+    run('s.Store("a","S")'),
+    eq('s.Code("a")', ["P1", true]),
+    eq('s.Pickup("wrong")', ["", false]),
+    eq('s.Pickup("P1")', ["a", true]),
+    eq('s.Pickup("P1")', ["", false]),
+    eq('s.Code("a")', ["", false]),
+    eq('s.Store("b","S")', ["S1", true]),
+    eq('s.Code("b")', ["P2", true]),
+  ],
+  [
+    setup("NewLocker(2,0,0)"),
+    eq('s.StoreUntil("b","S",10,0)', ["S1", true]),
+    eq('s.StoreUntil("a","S",10,0)', ["S2", true]),
+    eq("s.Expire(9)", []),
+    eq("s.Available()", 0),
+    eq("s.Expire(10)", ["a", "b"]),
+    eq("s.Available()", 2),
+    eq('s.Pickup("P1")', ["", false]),
+    eq("s.Expire(11)", []),
+  ],
+];
+basicHidden["parcel-locker"] = [
+  [
+    setup("NewLocker(0,1,1)"),
+    eq('s.Store("","S")', ["", false]),
+    eq('s.Store("a","s")', ["", false]),
+    eq('s.Store("a","M")', ["M1", true]),
+    eq('s.Store("a","L")', ["", false]),
+    eq("s.Available()", 1),
+    eq('s.Store("b","L")', ["L1", true]),
+  ],
+  [
+    setup("NewLocker(2,0,0)"),
+    eq('s.Code("missing")', ["", false]),
+    run('s.Store("","S")'),
+    run('s.Store("a","S")'),
+    run('s.Store("a","S")'),
+    run('s.Store("b","S")'),
+    eq('s.Code("b")', ["P2", true]),
+    eq('s.Pickup("P1")', ["a", true]),
+    eq('s.Store("a","S")', ["S1", true]),
+    eq('s.Code("a")', ["P3", true]),
+    eq('s.Pickup("P1")', ["", false]),
+  ],
+  [
+    setup("NewLocker(2,0,0)"),
+    eq('s.StoreUntil("bad","S",3,3)', ["", false]),
+    eq('s.StoreUntil("bad","S",2,-1)', ["", false]),
+    run('s.Store("permanent","S")'),
+    eq('s.StoreUntil("short","S",5,0)', ["S2", true]),
+    eq("s.Expire(-1)", []),
+    eq("s.Available()", 0),
+    eq("s.Expire(5)", ["short"]),
+    eq('s.Code("permanent")', ["P1", true]),
+    eq('s.StoreUntil("short","S",8,5)', ["S2", true]),
+    eq('s.Code("short")', ["P3", true]),
+    eq('s.Pickup("P3")', ["short", true]),
+    eq("s.Expire(8)", []),
+    eq("s.Available()", 1),
+    { kind: "assign", name: "z", expression: "NewLocker(1,0,0)" },
+    eq('z.StoreUntil("old","S",5,0)', ["S1", true]),
+    eq('z.StoreUntil("new","S",10,6)', ["", false]),
+    eq('z.Code("old")', ["P1", true]),
+    eq('z.Pickup("P1")', ["old", true]),
+  ],
+];
+basicProblems.push({
+  id: "parcel-locker",
+  title: "Parcel locker",
+  category: "Ride-hailing",
+  difficulty: "Medium",
+  duration: 60,
+  packageName: "practice",
+  summary:
+    "Allocate delivery compartments by size, issue single-use pickup codes, and release expired parcels.",
+  tags: ["Delivery", "Allocation", "Expiry"],
+  levels: [
+    level(
+      "Store a delivery",
+      "Choose the smallest suitable compartment for each parcel.",
+      [
+        "NewLocker(small, medium, large int) *Locker receives nonnegative compartment counts. IDs are S1..Ssmall, M1..Mmedium, and L1..Llarge.",
+        'Store(id, size string) (string, bool) accepts a nonempty parcel ID not currently stored and size exactly "S", "M", or "L". Choose the smallest fitting size (S fits S/M/L, M fits M/L, L fits L), then the lowest numeric compartment index.',
+        'Return the assigned compartment ID, or ("", false) if invalid or full. Rejected calls change nothing. Available() int counts all free compartments, regardless of size.',
+      ],
+      'NewLocker(1,1,0); Store("a","S"); Store("b","S"); Available()',
+      '("S1", true); ("M1", true); 0',
+    ),
+    level(
+      "Collect with a code",
+      "Give each successful storage session a single-use code.",
+      [
+        'Code(id string) (string, bool) returns the stored parcel’s code or ("", false) if unknown. Codes are "P1", "P2", ... in successful storage order; failures consume no number.',
+        'Pickup(code string) (string, bool) removes that session and returns its parcel ID. Unknown or previously used codes return ("", false) and change nothing.',
+        "Pickup frees the compartment and invalidates Code. A collected parcel ID can be stored again with a fresh code; codes are never reused.",
+      ],
+      'Store("a","S"); Code("a"); Pickup("P1"); Store("a","S"); Code("a")',
+      '("S1", true); ("P1", true); ("a", true); ("S1", true); ("P2", true)',
+    ),
+    level(
+      "Release expired deliveries",
+      "Use explicit integer timestamps and explicit cleanup.",
+      [
+        "StoreUntil(id, size string, expiresAt, now int) (string, bool) uses Store allocation and code rules and adds a deadline. Require now >= 0 and expiresAt > now; invalid calls change nothing. Store creates parcels without deadlines.",
+        "Expire(now int) []string removes every timed parcel with expiresAt <= now, frees its compartment, and invalidates its code. Return removed parcel IDs sorted lexicographically. Negative timestamps return an empty slice without changes.",
+        "Only Expire performs cleanup: Store, StoreUntil, Code, Available, and Pickup never automatically expire parcels. A parcel remains collectible until cleanup, even after its deadline. No real clock is used; timestamps may arrive in any order. Removed parcels never reappear.",
+      ],
+      'StoreUntil("a","S",10,0); Expire(9); Expire(10); Code("a")',
+      '("S1", true); []; ["a"]; ("", false)',
+    ),
+  ],
+  files: caseFiles(
+    `type Locker struct {}\nfunc NewLocker(small, medium, large int) *Locker { return &Locker{} }\nfunc (l *Locker) Store(id, size string) (string, bool) { return "", false }\nfunc (l *Locker) Available() int { return 0 }\nfunc (l *Locker) Code(id string) (string, bool) { return "", false }\nfunc (l *Locker) Pickup(code string) (string, bool) { return "", false }\nfunc (l *Locker) StoreUntil(id, size string, expiresAt, now int) (string, bool) { return "", false }\nfunc (l *Locker) Expire(now int) []string { return nil }`,
+    [
+      'l:=NewLocker(1,1,1); if l.Available()!=3 {t.Fatal("initial capacity incorrect")}; for i,c:=range []struct{id,size,want string}{{"a","S","S1"},{"b","S","M1"},{"c","L","L1"}} {if v,ok:=l.Store(c.id,c.size); !ok || v!=c.want {t.Fatalf("allocation %d incorrect",i)}}; if _,ok:=l.Store("d","S"); ok {t.Fatal("full locker accepted parcel")}; if l.Available()!=0 {t.Fatal("occupied capacity incorrect")}',
+      'l:=NewLocker(1,0,0); l.Store("a","S"); if c,ok:=l.Code("a"); !ok || c!="P1" {t.Fatal("first code incorrect")}; if _,ok:=l.Pickup("wrong"); ok {t.Fatal("invalid code accepted")}; if id,ok:=l.Pickup("P1"); !ok || id!="a" {t.Fatal("pickup failed")}; if _,ok:=l.Pickup("P1"); ok {t.Fatal("code reused")}; if _,ok:=l.Code("a"); ok {t.Fatal("collected parcel still found")}; if v,ok:=l.Store("b","S"); !ok || v!="S1" {t.Fatal("compartment not freed")}; if c,ok:=l.Code("b"); !ok || c!="P2" {t.Fatal("code sequence incorrect")}',
+      'l:=NewLocker(2,0,0); if _,ok:=l.StoreUntil("b","S",10,0); !ok {t.Fatal("timed store failed")}; l.StoreUntil("a","S",10,0); if len(l.Expire(9))!=0 || l.Available()!=0 {t.Fatal("early expiry")}; ids:=l.Expire(10); if len(ids)!=2 || ids[0]!="a" || ids[1]!="b" || l.Available()!=2 {t.Fatal("expiry boundary or order incorrect")}; if _,ok:=l.Pickup("P1"); ok {t.Fatal("expired code usable")}; if len(l.Expire(11))!=0 {t.Fatal("expired twice")}',
+    ],
+    [
+      'l:=NewLocker(0,1,1); for _,c:=range []struct{id,size string}{{"","S"},{"a","s"},{"a","unknown"}} {if _,ok:=l.Store(c.id,c.size); ok {t.Fatal("invalid parcel accepted")}}; if v,ok:=l.Store("a","M"); !ok || v!="M1" {t.Fatal("medium allocation incorrect")}; if _,ok:=l.Store("a","L"); ok {t.Fatal("duplicate parcel accepted")}; if l.Available()!=1 {t.Fatal("failure consumed capacity")}; if v,ok:=l.Store("b","L"); !ok || v!="L1" {t.Fatal("large allocation incorrect")}',
+      'l:=NewLocker(2,0,0); if _,ok:=l.Code("missing"); ok {t.Fatal("unknown parcel found")}; l.Store("","S"); l.Store("a","S"); l.Store("a","S"); l.Store("b","S"); if c,ok:=l.Code("b"); !ok || c!="P2" {t.Fatal("failure consumed code")}; l.Pickup("P1"); if v,ok:=l.Store("a","S"); !ok || v!="S1" {t.Fatal("lowest freed compartment not reused")}; if c,ok:=l.Code("a"); !ok || c!="P3" {t.Fatal("new session reused code")}; if _,ok:=l.Pickup("P1"); ok {t.Fatal("stale code collected new session")}',
+      'l:=NewLocker(2,0,0); if _,ok:=l.StoreUntil("bad","S",3,3); ok {t.Fatal("nonfuture deadline accepted")}; if _,ok:=l.StoreUntil("bad","S",2,-1); ok {t.Fatal("negative now accepted")}; l.Store("permanent","S"); l.StoreUntil("short","S",5,0); if len(l.Expire(-1))!=0 || l.Available()!=0 {t.Fatal("invalid expiry mutated locker")}; a:=l.Expire(5); if len(a)!=1 || a[0]!="short" {t.Fatal("permanent parcel expired")}; if c,ok:=l.Code("permanent"); !ok || c!="P1" {t.Fatal("permanent code invalidated")}; l.StoreUntil("short","S",8,5); if c,ok:=l.Code("short"); !ok || c!="P3" {t.Fatal("expiry reused sequence")}; l.Pickup("P3"); if len(l.Expire(8))!=0 || l.Available()!=1 {t.Fatal("picked parcel expired again")}; z:=NewLocker(1,0,0); z.StoreUntil("old","S",5,0); if _,ok:=z.StoreUntil("new","S",10,6); ok {t.Fatal("store automatically expired old parcel")}; if c,ok:=z.Code("old"); !ok || c!="P1" {t.Fatal("old code expired without cleanup")}; if id,ok:=z.Pickup("P1"); !ok || id!="old" {t.Fatal("parcel uncollectible before explicit expiry")}',
+    ],
+  ),
+});

@@ -7,8 +7,8 @@ import { spawnSync } from "node:child_process";
 import { problems } from "./problems.ts";
 
 test("catalog has unique original problems and three progressive levels", () => {
-  assert.equal(problems.length, 12);
-  assert.equal(new Set(problems.map((p) => p.id)).size, 12);
+  assert.equal(problems.length, 26);
+  assert.equal(new Set(problems.map((p) => p.id)).size, 26);
   for (const p of problems) {
     assert.equal(p.levels.length, 3, p.id);
     assert.ok(
@@ -51,21 +51,23 @@ test("every Go starter and its visible/hidden tests compile; starter fails real 
         0,
         `${p.id} compile:\n${compile.stdout}${compile.stderr}`,
       );
-      const run = spawnSync(
-        "go",
-        ["test", "-count=1", "-run", "^TestLevel1_", "."],
-        { cwd: dir, encoding: "utf8", timeout: 30000 },
-      );
-      assert.equal(
-        run.status,
-        1,
-        `${p.id} starter must fail level 1 assertions`,
-      );
-      assert.match(
-        run.stdout,
-        /--- FAIL: TestLevel1_/,
-        `${p.id} must fail assertions, not compilation`,
-      );
+      for (let level = 1; level <= 3; level++) {
+        const run = spawnSync(
+          "go",
+          ["test", "-count=1", "-run", `^TestLevel${level}_`, "."],
+          { cwd: dir, encoding: "utf8", timeout: 30000 },
+        );
+        assert.equal(
+          run.status,
+          1,
+          `${p.id} starter must fail level ${level} assertions`,
+        );
+        assert.match(
+          run.stdout,
+          new RegExp(`--- FAIL: TestLevel${level}_`),
+          `${p.id} must fail assertions, not compilation`,
+        );
+      }
     }
   } finally {
     await rm(root, { recursive: true, force: true });

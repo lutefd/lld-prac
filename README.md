@@ -28,6 +28,7 @@ Open [127.0.0.1:4173](http://127.0.0.1:4173). Both modes also start the API on p
 ## Practice
 
 - Choose an exercise from the **workbench.** logo or back arrow. Filter by ride-hailing, banking, or fundamentals.
+- Open **Practice roadmap** for a recommended order, language-specific progress, and a shortcut to the next unfinished exercise. Start with the stack and queue, use vending machine as the medium bridge, then dependency planner as the hard bridge. The roadmap is also available at `/#roadmap` and from the exercise library.
 - Implement the current level in `implementation.go`, `implementation.py`, or `implementation.ts`.
 - Use normal language completions, hover information, signatures, definitions, and diagnostics from gopls, Pyright, or the TypeScript language server. Inline AI suggestions are disabled.
 - Use **+ New file** in Explorer to create additional `.go`, `.py`, or `.ts` source files, including paths such as `helpers/pricing.go`. Switch files in Explorer; extra files are saved with the selected exercise and language.
@@ -44,13 +45,13 @@ The prompts use Go-style contracts as a common specification. Python and TypeScr
 
 ## Exercises
 
-Every exercise has three progressive levels and starters/tests for all three languages.
+All 26 exercises have three progressive levels and starters/tests for all three languages, including visible examples, hidden edge checks, and an editable sandbox. Eight easy exercises provide a gradual ramp before the medium and hard bridges on the roadmap.
 
-| Domain       | Exercises                                                                                                    |
-| ------------ | ------------------------------------------------------------------------------------------------------------ |
-| Ride-hailing | Ride dispatch, Fare calculator, Trip lifecycle, Driver availability, Parking lot, Multi-level parking garage |
-| Banking      | Wallet ledger, Account transfers, Card limits, Transaction history                                           |
-| Fundamentals | In-memory filesystem, Rate limiter                                                                           |
+| Domain       | Exercises                                                                                                                                                                                                                              |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Ride-hailing | Ride dispatch, Fare calculator, Trip lifecycle, Driver availability, Parking lot, Multi-level parking garage, Seat booking, Parcel locker                                                                                              |
+| Banking      | Wallet ledger, Account transfers, Card limits, Transaction history                                                                                                                                                                     |
+| Fundamentals | Bounded stack, FIFO queue, Score tracker, Contact directory, Shopping cart, Thermostat, Vending machine, Library lending, In-memory filesystem, Inventory reservations, LRU cache, Rate limiter, Dependency planner, Delayed job queue |
 
 These are original practice scenarios covering common Uber-like and Nubank-like domains. They are not official interview questions from either company.
 
@@ -94,4 +95,4 @@ npm run test:lsp         # installed language-server checks
 PRACTICE_DOCKER_CONTEXT=orbstack npm run test:docker # real container checks
 ```
 
-`shared/` contains the exercise catalog and portable starter/test generation. `server/` owns workspace storage, the JSON-RPC language-server bridge, and test runners. `src/` contains the React interface and Monaco integration. Future exercises can follow the existing catalog shape; Python/TypeScript API and test definitions belong in `shared/languages.ts`.
+`shared/` contains the exercise catalog, portable starter/test generation, and recommended roadmap. `server/` owns workspace storage, the JSON-RPC language-server bridge, and test runners. `src/` contains the React interface and Monaco integration. New case modules keep Go prompts/starters/tests alongside their Python/TypeScript API and test commands; register their exports in `shared/problems.ts` and `shared/languages.ts`, and add their recommended position to `shared/roadmap.ts`.

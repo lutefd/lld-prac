@@ -1,10 +1,26 @@
 import type { PracticeProblem, PracticeFile } from "./problems.ts";
-type Command = {
-  kind: "assign" | "eq" | "run";
-  name?: string;
-  expression: string;
-  expected?: unknown;
-};
+import type { Command } from "./case-support.ts";
+import {
+  reservationApi,
+  reservationTests,
+  reservationHidden,
+} from "./reservations.ts";
+import {
+  fundamentalApi,
+  fundamentalTests,
+  fundamentalHidden,
+} from "./fundamentals.ts";
+import { basicApi, basicTests, basicHidden } from "./basics.ts";
+import {
+  easyCollectionApi,
+  easyCollectionTests,
+  easyCollectionHidden,
+} from "./easy-collections.ts";
+import {
+  easySystemApi,
+  easySystemTests,
+  easySystemHidden,
+} from "./easy-systems.ts";
 // Portable starter/test generation. All exercises keep the same PascalCase API.
 const api: Record<string, [string, string, string[]]> = {
   "ride-dispatch": [
@@ -865,6 +881,31 @@ const hidden: Record<string, Command[][]> = {
     ],
   ],
 };
+
+Object.assign(
+  api,
+  basicApi,
+  easyCollectionApi,
+  easySystemApi,
+  reservationApi,
+  fundamentalApi,
+);
+Object.assign(
+  tests,
+  basicTests,
+  easyCollectionTests,
+  easySystemTests,
+  reservationTests,
+  fundamentalTests,
+);
+Object.assign(
+  hidden,
+  basicHidden,
+  easyCollectionHidden,
+  easySystemHidden,
+  reservationHidden,
+  fundamentalHidden,
+);
 
 const pyType: Record<string, string> = {
   s: "str",

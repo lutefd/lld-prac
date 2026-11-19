@@ -1,4 +1,9 @@
 import { parkingProblems } from "./parking.ts";
+import { reservationProblems } from "./reservations.ts";
+import { fundamentalProblems } from "./fundamentals.ts";
+import { basicProblems } from "./basics.ts";
+import { easyCollectionProblems } from "./easy-collections.ts";
+import { easySystemProblems } from "./easy-systems.ts";
 export type PracticeFile = {
   path: string;
   content: string;
@@ -688,3 +693,10 @@ for (const problem of problems) {
   }
 }
 problems.push(...parkingProblems);
+problems.push(
+  ...basicProblems,
+  ...easyCollectionProblems,
+  ...easySystemProblems,
+  ...reservationProblems,
+  ...fundamentalProblems,
+);
