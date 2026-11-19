@@ -30,7 +30,8 @@ Open [127.0.0.1:4173](http://127.0.0.1:4173). Both modes also start the API on p
 - Choose an exercise from the **workbench.** logo or back arrow. Filter by ride-hailing, banking, or fundamentals.
 - Implement the current level in `implementation.go`, `implementation.py`, or `implementation.ts`.
 - Use normal language completions, hover information, signatures, definitions, and diagnostics from gopls, Pyright, or the TypeScript language server. Inline AI suggestions are disabled.
-- Add personal tests to the editable sandbox test file. Supplied tests are read only. Test names in the Go sandbox do not need a special prefix.
+- Use **+ New file** in Explorer to create additional `.go`, `.py`, or `.ts` source files, including paths such as `helpers/pricing.go`. Switch files in Explorer; extra files are saved with the selected exercise and language.
+- Add personal tests to the sandbox or create your own test files: `*_test.go`, `test_*.py` / `*_test.py`, or `*.test.ts` / `*_test.ts`. Nested test files run too. Supplied tests are read only; Go test names do not need a special prefix.
 - Click **Run tests** or press **⌘ Enter / Ctrl Enter**. The console shows the actual runner output, including your test logs, errors, assertion failures, and hidden check results.
 - Passing the cumulative checks unlocks the next level. Later-level test files are excluded from the execution snapshot until their level is selected.
 - Drag the dividers to resize requirements, the file explorer, and the console. Each pane can be collapsed and restored; sizes and visibility are remembered in this browser. Focus a divider and use arrow keys to resize (Shift for larger steps), or double-click it to reset the size. Run tests automatically reopens a collapsed console. The practice timer is optional and can be paused.
@@ -57,11 +58,11 @@ These are original practice scenarios covering common Uber-like and Nubank-like 
 
 Native execution is the default. Each run uses a temporary snapshot, captures stdout/stderr, enforces a time/output limit, and cleans up afterward. It executes code with your local account's permissions; this is a personal practice tool for code you trust, not a hosted judge for untrusted submissions.
 
-| Language   | Runner                                                               |
-| ---------- | -------------------------------------------------------------------- |
-| Go         | `go test -v -count=1 -timeout=12s .`                                 |
-| Python     | `python3 -m unittest -v` with the selected level modules and sandbox |
-| TypeScript | Node 24 native type stripping with `node --test`                     |
+| Language   | Runner                                                             |
+| ---------- | ------------------------------------------------------------------ |
+| Go         | `go test -v -count=1 -timeout=12s ./...`                           |
+| Python     | Python unittest with selected level checks and all user test files |
+| TypeScript | Node 24 native type stripping with `node --test`                   |
 
 The TypeScript runner executes TypeScript without an intermediate compile step. Its language server provides type diagnostics; test execution itself does not type-check. Use type-strippable syntax in solutions (avoid enums and constructor parameter properties).
 

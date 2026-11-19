@@ -19,6 +19,7 @@ import {
   PanelBottomClose,
   Maximize2,
   Minimize2,
+  Plus,
   Play,
   RotateCcw,
   Search,
@@ -29,10 +30,16 @@ import {
 } from "lucide-react";
 import Editor from "./Editor";
 import PanelDivider from "./PanelDivider";
+import Roadmap from "./Roadmap";
 import type { CSSProperties } from "react";
 
 type Language = "go" | "python" | "typescript";
-type File = { path: string; content: string; readOnly: boolean };
+type File = {
+  path: string;
+  content: string;
+  readOnly: boolean;
+  userCreated?: boolean;
+};
 type Problem = {
   id: string;
   title: string;
@@ -90,6 +97,12 @@ async function api<T = unknown>(path: string, body?: unknown): Promise<T> {
   return data as T;
 }
 export default function App() {
+  const [route, setRoute] = useState(() => location.hash);
+  useEffect(() => {
+    const navigate = () => setRoute(location.hash);
+    window.addEventListener("hashchange", navigate);
+    return () => window.removeEventListener("hashchange", navigate);
+  }, []);
   const [problems, setProblems] = useState<Problem[]>([]),
     [error, setError] = useState("");
   useEffect(() => {
@@ -116,7 +129,11 @@ export default function App() {
         )}
       </div>
     );
-  return <Workspace problems={problems} />;
+  return route === "#roadmap" ? (
+    <Roadmap problems={problems} />
+  ) : (
+    <Workspace problems={problems} />
+  );
 }
 function Workspace({ problems }: { problems: Problem[] }) {
   const [problemId, setProblemId] = useState(() =>
@@ -175,6 +192,15 @@ function Workspace({ problems }: { problems: Problem[] }) {
     [seconds, setSeconds] = useState(0),
     [resetConfirm, setResetConfirm] = useState(false),
     [revision, setRevision] = useState(0);
+  const [newFileOpen, setNewFileOpen] = useState(false);
+  const [newFilePath, setNewFilePath] = useState("");
+  const [newFileError, setNewFileError] = useState("");
+  const [creatingFile, setCreatingFile] = useState(false);
+  const openNewFile = () => {
+    setNewFilePath("");
+    setNewFileError("");
+    setNewFileOpen(true);
+  };
   const generation = useRef(0),
     saveGeneration = useRef(0);
   const draftKey = `workbench.draft.${problem.id}.${language}`;
@@ -308,6 +334,44 @@ function Workspace({ problems }: { problems: Problem[] }) {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [runTests]);
+  const createFile = async () => {
+    if (!session || creatingFile) return;
+    const path = newFilePath.trim();
+    if (!path) {
+      setNewFileError("Enter a file path.");
+      return;
+    }
+    const gen = generation.current;
+    setCreatingFile(true);
+    setNewFileError("");
+    try {
+      const content =
+        language === "go"
+          ? "package practice\n\n"
+          : language === "python"
+            ? "# Add your code here.\n"
+            : "// Add your code here.\n";
+      const { file } = await api<{ file: File }>(
+        `/workspace/${session.sessionId}/create-file`,
+        { path, content },
+      );
+      if (gen !== generation.current) return;
+      setFiles((current) => {
+        const next = [...current, file];
+        write(
+          draftKey,
+          next.filter((f) => !f.readOnly),
+        );
+        return next;
+      });
+      setActivePath(file.path);
+      setNewFileOpen(false);
+    } catch (error) {
+      setNewFileError((error as Error).message);
+    } finally {
+      setCreatingFile(false);
+    }
+  };
   const activeFile = files.find((f) => f.path === activePath);
   const selectedLevel = problem.levels[level - 1];
   const elapsed = `${Math.floor(seconds / 60)
@@ -352,6 +416,9 @@ function Workspace({ problems }: { problems: Problem[] }) {
           Practice <ChevronRight size={13} /> <span>Low-level design</span>
         </button>
         <div className="header-spacer" />
+        <a className="roadmap-link" href="#roadmap">
+          Practice roadmap <ArrowUpRight size={14} />
+        </a>
         <span className="distraction-free">
           <span />
           No AI. Just you and the code.
@@ -607,13 +674,23 @@ function Workspace({ problems }: { problems: Problem[] }) {
               <aside className="explorer">
                 <div className="panel-heading">
                   <span>EXPLORER</span>
-                  <button
-                    className="icon-button"
-                    title="Collapse file explorer"
-                    onClick={() => setExplorer(false)}
-                  >
-                    <PanelLeftClose size={14} />
-                  </button>
+                  <div className="explorer-actions">
+                    <button
+                      className="icon-button"
+                      title="New file"
+                      onClick={openNewFile}
+                      disabled={!session || running}
+                    >
+                      <Plus size={15} />
+                    </button>
+                    <button
+                      className="icon-button"
+                      title="Collapse file explorer"
+                      onClick={() => setExplorer(false)}
+                    >
+                      <PanelLeftClose size={14} />
+                    </button>
+                  </div>
                 </div>
                 <div className="folder-label">
                   <ChevronDown size={13} />
@@ -644,8 +721,8 @@ function Workspace({ problems }: { problems: Problem[] }) {
                   <FlaskConical size={17} />
                   <strong>Make it your sandbox.</strong>
                   <p>
-                    Write your own tests in the sandbox file. Run them alongside
-                    the level checks.
+                    Add source files or your own test files with the + button.
+                    Run them alongside the level checks.
                   </p>
                   <span>Hidden checks run with your tests.</span>
                 </div>
@@ -709,6 +786,14 @@ function Workspace({ problems }: { problems: Problem[] }) {
                   {activeFile?.readOnly && <LockKeyhole size={11} />}
                 </div>
                 <div className="tab-spacer" />
+                <button
+                  className="icon-button new-file-shortcut"
+                  title="New file"
+                  onClick={openNewFile}
+                  disabled={!session || running}
+                >
+                  <Plus size={15} />
+                </button>
                 <span className="save-status">
                   {saved ? (
                     <CheckCheck size={13} />
@@ -939,6 +1024,12 @@ function Workspace({ problems }: { problems: Problem[] }) {
                 <p>
                   Real-world systems, small steps. Pick your next challenge.
                 </p>
+                <a
+                  className="roadmap-link library-roadmap-link"
+                  href="#roadmap"
+                >
+                  Follow the practice roadmap <ArrowUpRight size={14} />
+                </a>
               </div>
               <button
                 className="icon-button"
@@ -1017,6 +1108,76 @@ function Workspace({ problems }: { problems: Problem[] }) {
               <span>Go · Python · TypeScript</span>
             </footer>
           </section>
+        </div>
+      )}
+      {newFileOpen && (
+        <div
+          className="modal-backdrop"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !creatingFile)
+              setNewFileOpen(false);
+          }}
+        >
+          <form
+            className="confirm-modal create-file-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Create file"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void createFile();
+            }}
+          >
+            <FileCode2 size={25} />
+            <h2>Create file</h2>
+            <label htmlFor="new-file-path">File path</label>
+            <input
+              id="new-file-path"
+              autoFocus
+              value={newFilePath}
+              onChange={(event) => {
+                setNewFilePath(event.target.value);
+                setNewFileError("");
+              }}
+              placeholder={
+                language === "go"
+                  ? "helper.go"
+                  : language === "python"
+                    ? "helper.py"
+                    : "helper.ts"
+              }
+              autoComplete="off"
+              disabled={creatingFile}
+            />
+            <p>
+              Use a relative path ending in{" "}
+              {language === "go"
+                ? ".go"
+                : language === "python"
+                  ? ".py"
+                  : ".ts"}
+              . Folders are created automatically. Extra test files run with Run
+              tests.
+            </p>
+            {newFileError && (
+              <p className="file-error" role="alert">
+                {newFileError}
+              </p>
+            )}
+            <div className="dialog-actions">
+              <button
+                type="button"
+                className="secondary"
+                disabled={creatingFile}
+                onClick={() => setNewFileOpen(false)}
+              >
+                Cancel
+              </button>
+              <button className="primary" type="submit" disabled={creatingFile}>
+                {creatingFile ? "Creating…" : "Create file"}
+              </button>
+            </div>
+          </form>
         </div>
       )}
       {resetConfirm && (

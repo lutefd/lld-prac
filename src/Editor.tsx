@@ -65,22 +65,24 @@ export default function Editor({
 }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const editor = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
+  const languageService = useRef<GoLanguageService | null>(null);
   const models = useRef(new Map<string, monaco.editor.ITextModel>());
+  const listeners = useRef(new Map<string, monaco.IDisposable>());
   const savedViews = useRef(
     new Map<string, monaco.editor.ICodeEditorViewState | null>(),
   );
   const active = useRef(activePath);
   const callbacks = useRef({ onChange, onStatus });
   callbacks.current = { onChange, onStatus };
-  const initialFiles = useRef(files);
-  initialFiles.current = files;
+  const latestFiles = useRef(files);
+  latestFiles.current = files;
 
   useEffect(() => {
     if (!container.current) return;
     const service = new GoLanguageService(session, (status) =>
       callbacks.current.onStatus?.(status),
     );
-    const listeners: monaco.IDisposable[] = [];
+    languageService.current = service;
     const instance = monaco.editor.create(container.current, {
       theme: "practice-dark",
       language: session.language || "go",
@@ -106,7 +108,32 @@ export default function Editor({
       contextmenu: true,
     });
     editor.current = instance;
-    for (const file of initialFiles.current) {
+    service.register();
+    return () => {
+      service.dispose();
+      listeners.current.forEach((listener) => listener.dispose());
+      listeners.current.clear();
+      instance.dispose();
+      models.current.forEach((model) => model.dispose());
+      models.current.clear();
+      savedViews.current.clear();
+      editor.current = null;
+      languageService.current = null;
+    };
+  }, [session.sessionId]);
+
+  // Reconcile models before selecting the active file, so newly created files
+  // open immediately without resetting the editor or the language-server session.
+  useEffect(() => {
+    const service = languageService.current;
+    if (!service) return;
+    for (const file of files) {
+      const existing = models.current.get(file.path);
+      if (existing) {
+        if (existing.getValue() !== file.content)
+          existing.setValue(file.content);
+        continue;
+      }
       const uri = monaco.Uri.parse(service.uri(file.path));
       const language = file.path.endsWith(".go")
         ? "go"
@@ -120,30 +147,21 @@ export default function Editor({
       const model = monaco.editor.createModel(file.content, language, uri);
       models.current.set(file.path, model);
       service.open(model);
-      listeners.push(
+      listeners.current.set(
+        file.path,
         model.onDidChangeContent(() => {
-          if (file.readOnly) return;
+          if (
+            latestFiles.current.find((value) => value.path === file.path)
+              ?.readOnly ??
+            true
+          )
+            return;
           service.change(model);
           callbacks.current.onChange(file.path, model.getValue());
         }),
       );
     }
-    service.register();
-    const file = initialFiles.current.find(
-      (value) => value.path === active.current,
-    );
-    instance.setModel(models.current.get(active.current) || null);
-    instance.updateOptions({ readOnly: file?.readOnly ?? false });
-    return () => {
-      service.dispose();
-      listeners.forEach((listener) => listener.dispose());
-      instance.dispose();
-      models.current.forEach((model) => model.dispose());
-      models.current.clear();
-      savedViews.current.clear();
-      editor.current = null;
-    };
-  }, [session.sessionId]);
+  }, [files, session.sessionId]);
 
   useEffect(() => {
     const instance = editor.current;
@@ -153,23 +171,16 @@ export default function Editor({
     active.current = activePath;
     const model = models.current.get(activePath);
     if (!model) return;
-    instance.setModel(model);
+    const switchingFile = instance.getModel() !== model;
+    if (switchingFile) instance.setModel(model);
     instance.updateOptions({
       readOnly:
         locked ||
         (files.find((file) => file.path === activePath)?.readOnly ?? false),
     });
     const view = savedViews.current.get(activePath);
-    if (view) instance.restoreViewState(view);
+    if (switchingFile && view) instance.restoreViewState(view);
   }, [activePath, session.sessionId, files, locked]);
-
-  useEffect(() => {
-    for (const file of files) {
-      const model = models.current.get(file.path);
-      if (model && model.getValue() !== file.content)
-        model.setValue(file.content);
-    }
-  }, [files]);
 
   return (
     <div

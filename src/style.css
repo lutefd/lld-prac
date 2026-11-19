@@ -1684,3 +1684,55 @@ h1 {
 .focus-mode .timer-label {
   display: none;
 }
+
+.explorer-actions {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+.explorer .panel-heading {
+  padding-right: 8px;
+}
+.new-file-shortcut {
+  display: none;
+  margin-right: 7px;
+}
+.explorer-hidden .new-file-shortcut {
+  display: inline-flex;
+}
+.create-file-modal {
+  width: min(440px, 100%);
+}
+.create-file-modal > svg {
+  color: var(--orange);
+}
+.create-file-modal label {
+  display: block;
+  font-size: 11px;
+  color: #b4becb;
+  margin: 20px 0 8px;
+}
+.create-file-modal input {
+  width: 100%;
+  padding: 11px 12px;
+  background: #15191e;
+  border: 1px solid #47515e;
+  border-radius: 5px;
+  color: #d7dfe9;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 12px;
+}
+.create-file-modal .file-error {
+  color: #e6a090;
+}
+.dialog-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 25px;
+}
+@media (max-width: 850px) {
+  .new-file-shortcut {
+    display: inline-flex;
+  }
+}
