@@ -1045,6 +1045,7 @@ h1 {
 }
 .category-tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 7px;
   padding: 22px 32px 17px;
   border-bottom: 1px solid #303740;

@@ -1,3 +1,6 @@
+import { commerceProblems } from "./commerce.ts";
+import { collaborationProblems } from "./collaboration.ts";
+import { infrastructureProblems } from "./infrastructure.ts";
 import { parkingProblems } from "./parking.ts";
 import { reservationProblems } from "./reservations.ts";
 import { fundamentalProblems } from "./fundamentals.ts";
@@ -19,7 +22,13 @@ export type PracticeLevel = {
 export type PracticeProblem = {
   id: string;
   title: string;
-  category: "Ride-hailing" | "Banking" | "Fundamentals";
+  category:
+    | "Ride-hailing"
+    | "Banking"
+    | "Fundamentals"
+    | "Commerce"
+    | "Collaboration"
+    | "Infrastructure";
   difficulty: "Easy" | "Medium" | "Hard";
   duration: number;
   summary: string;
@@ -699,4 +708,7 @@ problems.push(
   ...easySystemProblems,
   ...reservationProblems,
   ...fundamentalProblems,
+  ...commerceProblems,
+  ...collaborationProblems,
+  ...infrastructureProblems,
 );

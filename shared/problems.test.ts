@@ -7,8 +7,8 @@ import { spawnSync } from "node:child_process";
 import { problems } from "./problems.ts";
 
 test("catalog has unique original problems and three progressive levels", () => {
-  assert.equal(problems.length, 26);
-  assert.equal(new Set(problems.map((p) => p.id)).size, 26);
+  assert.equal(problems.length, 35);
+  assert.equal(new Set(problems.map((p) => p.id)).size, 35);
   for (const p of problems) {
     assert.equal(p.levels.length, 3, p.id);
     assert.ok(
@@ -26,6 +26,19 @@ test("catalog has unique original problems and three progressive levels", () => 
       p.id,
     );
     assert.equal(new Set(p.files.map((f) => f.path)).size, p.files.length);
+  }
+});
+
+test("new themes each cover easy, medium, and hard practice", () => {
+  for (const category of ["Commerce", "Collaboration", "Infrastructure"]) {
+    assert.deepEqual(
+      problems
+        .filter((p) => p.category === category)
+        .map((p) => p.difficulty)
+        .sort(),
+      ["Easy", "Hard", "Medium"],
+      category,
+    );
   }
 });
 

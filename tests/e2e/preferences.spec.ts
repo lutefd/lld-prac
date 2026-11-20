@@ -14,7 +14,7 @@ test("browser locale and system theme are defaults; overrides persist without re
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
     "Pequenos passos. Projetos melhores.",
   );
-  await expect(page.locator(".roadmap-exercises li")).toHaveCount(26);
+  await expect(page.locator(".roadmap-exercises li")).toHaveCount(35);
   await expect(page.locator(".roadmap-exercises li").first()).not.toContainText(
     "Bounded stack",
   );

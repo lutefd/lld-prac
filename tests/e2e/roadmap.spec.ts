@@ -7,7 +7,7 @@ test("roadmap orders the full catalog, restores progress, and opens the selected
   await expect(
     page.getByRole("heading", { name: "Small steps. Stronger designs." }),
   ).toBeVisible();
-  await expect(page.locator(".roadmap-exercises li")).toHaveCount(26);
+  await expect(page.locator(".roadmap-exercises li")).toHaveCount(35);
   await expect(page.locator(".roadmap-exercises li").first()).toContainText(
     "Bounded stack",
   );
@@ -16,7 +16,7 @@ test("roadmap orders the full catalog, restores progress, and opens the selected
   });
   await page.getByLabel("Roadmap language").selectOption("python");
   await expect(page.locator(".roadmap-controls")).toContainText(
-    "1 of 26 exercises completed",
+    "1 of 35 exercises completed",
   );
   await expect(page.locator(".roadmap-exercises li").first()).toContainText(
     "3/3 levels",
@@ -101,4 +101,38 @@ test("unknown exercise links offer a route back to the roadmap", async ({
   await expect(
     page.getByRole("heading", { name: "Small steps. Stronger designs." }),
   ).toBeVisible();
+});
+
+test("new themes expose all difficulty levels and remain usable on mobile", async ({
+  page,
+}) => {
+  await page.goto("/practice/bounded-stack");
+  await page.getByRole("button", { name: "Open exercise library" }).click();
+  for (const category of ["Commerce", "Collaboration", "Infrastructure"]) {
+    await page.getByRole("button", { name: category, exact: true }).click();
+    await expect(page.locator(".exercise-card")).toHaveCount(3);
+    for (const difficulty of ["Easy", "Medium", "Hard"]) {
+      await expect(
+        page
+          .locator(".exercise-card .difficulty")
+          .filter({ hasText: difficulty }),
+      ).toHaveCount(1);
+    }
+  }
+  await page.setViewportSize({ width: 375, height: 812 });
+  await expect(
+    page.getByRole("button", { name: "Infrastructure", exact: true }),
+  ).toBeInViewport();
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(375);
+  const link = page.locator(".exercise-card").filter({
+    has: page.getByRole("heading", {
+      name: "Feature flag registry",
+      exact: true,
+    }),
+  });
+  await link.click();
+  await expect(page).toHaveURL(/\/practice\/feature-flags$/);
+  await expect(page.locator(".file-list")).toContainText("implementation.go");
 });

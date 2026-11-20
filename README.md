@@ -31,7 +31,7 @@ Use the **Language** selector and sun/moon theme toggle in the roadmap or worksp
 
 - The app opens on the **Practice roadmap**, with a recommended order, language-specific progress, and a shortcut to the next unfinished exercise. Start with the stack and queue, use vending machine as the medium bridge, then dependency planner as the hard bridge. Return to the roadmap at `/` from any exercise.
 - Each exercise has a bookmarkable URL, such as `/practice/ride-dispatch`. Roadmap and library links can be copied or opened in new tabs. Reloading or using browser back/forward preserves the exercise selected by the URL; language, drafts, and progress stay saved locally.
-- Open the exercise library from the **workbench.** logo or back arrow. Filter by ride-hailing, banking, or fundamentals.
+- Open the exercise library from the **workbench.** logo or back arrow. Filter by ride-hailing, banking, fundamentals, commerce, collaboration, or infrastructure.
 - Implement the current level in `implementation.go`, `implementation.py`, or `implementation.ts`.
 - Use normal language completions, hover information, signatures, definitions, and diagnostics from gopls, Pyright, or the TypeScript language server. Inline AI suggestions are disabled.
 - Use **+ New file** in Explorer to create additional `.go`, `.py`, or `.ts` source files, including paths such as `helpers/pricing.go`. Switch files in Explorer; extra files are saved with the selected exercise and language.
@@ -49,15 +49,18 @@ The prompts use Go-style contracts as a common specification. Python and TypeScr
 
 ## Exercises
 
-All 26 exercises have three progressive levels and starters/tests for all three languages, including visible examples, hidden edge checks, and an editable sandbox. Eight easy exercises provide a gradual ramp before the medium and hard bridges on the roadmap.
+All 35 exercises have three progressive levels and starters/tests for all three languages, including visible examples, hidden edge checks, and an editable sandbox. Eleven easy exercises provide a gradual ramp before the medium and hard bridges on the roadmap.
 
-| Domain       | Exercises                                                                                                                                                                                                                              |
-| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Ride-hailing | Ride dispatch, Fare calculator, Trip lifecycle, Driver availability, Parking lot, Multi-level parking garage, Seat booking, Parcel locker                                                                                              |
-| Banking      | Wallet ledger, Account transfers, Card limits, Transaction history                                                                                                                                                                     |
-| Fundamentals | Bounded stack, FIFO queue, Score tracker, Contact directory, Shopping cart, Thermostat, Vending machine, Library lending, In-memory filesystem, Inventory reservations, LRU cache, Rate limiter, Dependency planner, Delayed job queue |
+| Domain         | Exercises                                                                                                                                                                                                                              |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Ride-hailing   | Ride dispatch, Fare calculator, Trip lifecycle, Driver availability, Parking lot, Multi-level parking garage, Seat booking, Parcel locker                                                                                              |
+| Banking        | Wallet ledger, Account transfers, Card limits, Transaction history                                                                                                                                                                     |
+| Fundamentals   | Bounded stack, FIFO queue, Score tracker, Contact directory, Shopping cart, Thermostat, Vending machine, Library lending, In-memory filesystem, Inventory reservations, LRU cache, Rate limiter, Dependency planner, Delayed job queue |
+| Commerce       | Coupon registry, Restaurant orders, Auction house                                                                                                                                                                                      |
+| Collaboration  | Task checklist, Support ticket router, Meeting room scheduler                                                                                                                                                                          |
+| Infrastructure | Feature flag registry, Pub/sub broker, TTL key-value store                                                                                                                                                                             |
 
-These are original practice scenarios covering common Uber-like and Nubank-like domains. They are not official interview questions from either company.
+These are original practice scenarios spanning ride-hailing, banking, commerce, collaboration, infrastructure, and core data structures. They cover common interview design patterns and are not official questions from any company.
 
 ## Test execution
 
