@@ -3,8 +3,9 @@ import { performance } from "node:perf_hooks";
 import { mkdtemp, mkdir, cp, readdir, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-export type Language = "go" | "python" | "typescript";
+export type Language = "go" | "python" | "typescript" | "java";
 type RunOptions = {
   timeoutMs?: number;
   mode?: string;
@@ -58,6 +59,17 @@ sys.exit(0 if result.wasSuccessful() else 1)
         ...files.filter(
           (f) => f.endsWith(".test.ts") || f.endsWith("_test.ts"),
         ),
+      ],
+    };
+  if (language === "java")
+    return {
+      command: "java",
+      args: [
+        "-Xmx128m",
+        "-XX:+UseSerialGC",
+        "-XX:ActiveProcessorCount=1",
+        fileURLToPath(new URL("./java/PracticeRunner.java", import.meta.url)),
+        ...files.filter((file) => file.endsWith(".java")),
       ],
     };
   throw new Error("Unsupported language");
@@ -153,12 +165,18 @@ export async function runTests(
       recursive: true,
       filter: (source) => {
         const relative = path.relative(cwd, source).split(path.sep).join("/");
+        if (relative === ".jdtls" || relative.startsWith(".jdtls/"))
+          return false;
         if (suppliedFiles && !suppliedFiles.includes(relative)) return true;
         const match =
           /^(?:hidden_)?(?:test_)?level_(\d+)(?:_test\.go|\.test\.ts|\.py)$/.exec(
             relative,
           );
-        return !match || Number(match[1]) <= level;
+        const javaMatch = /^(?:Hidden)?Level(\d+)Test\.java$/.exec(relative);
+        return (
+          (!match || Number(match[1]) <= level) &&
+          (!javaMatch || Number(javaMatch[1]) <= level)
+        );
       },
     });
     const collectFiles = async (directory: string): Promise<string[]> => {
@@ -180,6 +198,7 @@ export async function runTests(
         go: process.env.PRACTICE_GO_IMAGE || "golang:1.26-alpine",
         python: "python:3.14-alpine",
         typescript: "node:24-alpine",
+        java: process.env.PRACTICE_JAVA_IMAGE || "workbench-java-runner:21",
       };
       containerName = `lld-practice-${path.basename(snapshot).toLowerCase()}`;
       const args = [
@@ -219,7 +238,18 @@ export async function runTests(
         "PYTHONDONTWRITEBYTECODE=1",
         images[language],
         selected.command,
-        ...selected.args,
+        ...(language === "java"
+          ? [
+              "-Xmx128m",
+              "-XX:+UseSerialGC",
+              "-XX:ActiveProcessorCount=1",
+              "-XX:SharedArchiveFile=/opt/workbench/java/classes.jsa",
+              "-cp",
+              "/opt/workbench/java/runner.jar",
+              "PracticeRunner",
+              ...files.filter((file) => file.endsWith(".java")),
+            ]
+          : selected.args),
       ];
       return {
         ...(await runProcess("docker", args, snapshot, { timeoutMs })),

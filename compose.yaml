@@ -21,11 +21,14 @@ services:
     depends_on:
       go-runner:
         condition: service_completed_successfully
+      java-runner:
+        condition: service_completed_successfully
     environment:
       PRACTICE_HOST: 0.0.0.0
       PRACTICE_ALLOWED_ORIGINS: ${PRACTICE_ALLOWED_ORIGINS:?Set your public URL in .env}
       PRACTICE_RUNNER: docker
       PRACTICE_GO_IMAGE: workbench-go-runner:1.26
+      PRACTICE_JAVA_IMAGE: workbench-java-runner:21
       PRACTICE_WORKSPACE_ROOT: /app/.practice/workspaces
       PRACTICE_RUN_ROOT: ${PRACTICE_RUN_ROOT:-/var/lib/workbench/runs}
       PRACTICE_MAX_WORKSPACES: ${PRACTICE_MAX_WORKSPACES:-20}
@@ -63,6 +66,19 @@ services:
     build:
       context: .
       dockerfile: deploy/go-runner.Dockerfile
+    entrypoint: ["/bin/true"]
+    network_mode: none
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  java-runner:
+    image: workbench-java-runner:21
+    build:
+      context: .
+      dockerfile: deploy/java-runner.Dockerfile
     entrypoint: ["/bin/true"]
     network_mode: none
     read_only: true

@@ -36,7 +36,7 @@ import type { CSSProperties } from "react";
 import { usePreferences, PreferencesControls } from "./preferences";
 import { localizeProblem } from "./problemTranslations";
 
-type Language = "go" | "python" | "typescript";
+type Language = "go" | "python" | "typescript" | "java";
 type File = {
   path: string;
   content: string;
@@ -70,7 +70,12 @@ type Run = {
   durationMs: number;
   error?: string;
 };
-const languageNames = { go: "Go", python: "Python", typescript: "TypeScript" };
+const languageNames = {
+  go: "Go",
+  python: "Python",
+  typescript: "TypeScript",
+  java: "Java",
+};
 const read = <T,>(key: string, fallback: T): T => {
   try {
     return JSON.parse(localStorage.getItem(key) || "null") ?? fallback;
@@ -938,7 +943,9 @@ function Workspace({
                         ? "go test -v"
                         : language === "python"
                           ? "python -m unittest -v"
-                          : "node --test"}
+                          : language === "java"
+                            ? "javac + java"
+                            : "node --test"}
                     </span>
                     <button
                       className="icon-button"
@@ -1230,7 +1237,9 @@ function Workspace({
                   ? "helper.go"
                   : language === "python"
                     ? "helper.py"
-                    : "helper.ts"
+                    : language === "java"
+                      ? "Helper.java"
+                      : "helper.ts"
               }
               autoComplete="off"
               disabled={creatingFile}
@@ -1244,7 +1253,9 @@ function Workspace({
                       ? ".go"
                       : language === "python"
                         ? ".py"
-                        : ".ts",
+                        : language === "java"
+                          ? ".java"
+                          : ".ts",
                 },
               )}
             </p>

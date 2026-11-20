@@ -148,12 +148,16 @@ export const uiTranslations: Record<string, string> = {
   "Pyright connected": "Pyright conectado",
   "TypeScript LSP unavailable": "TypeScript LSP indisponível",
   "TypeScript LSP connected": "TypeScript LSP conectado",
+  "JDT LS unavailable": "JDT LS indisponível",
+  "JDT LS connected": "JDT LS conectado",
   "gopls unavailable": "gopls indisponível",
   "gopls connected": "gopls conectado",
   "Use a .go source file for this language":
     "Use um arquivo de código .go para esta linguagem",
   "Use a .py source file for this language":
     "Use um arquivo de código .py para esta linguagem",
+  "Use a .java source file for this language":
+    "Use um arquivo de código .java para esta linguagem",
   "Use a .ts source file for this language":
     "Use um arquivo de código .ts para esta linguagem",
 };

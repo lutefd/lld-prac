@@ -30,6 +30,12 @@ const fixtures = [
     extra: '\npracticeValue = "sample"\nintegration_result = practiceVal\n',
   },
   {
+    language: "java",
+    suffix: ".java",
+    extra:
+      '\nclass IntegrationProbe { static String practiceValue = "sample"; static String integrationResult = practiceVal; }\n',
+  },
+  {
     language: "typescript",
     suffix: ".ts",
     extra:
@@ -108,7 +114,7 @@ for (const fixture of fixtures) {
           (file) =>
             !file.readOnly &&
             file.path.endsWith(fixture.suffix) &&
-            !file.path.includes("sandbox"),
+            !file.path.toLowerCase().includes("sandbox"),
         );
         assert(
           source,

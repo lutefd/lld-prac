@@ -11,6 +11,7 @@ import {
 } from "./infrastructure.ts";
 import type { PracticeProblem, PracticeFile } from "./problems.ts";
 import type { Command } from "./case-support.ts";
+import { javaFiles } from "./java.ts";
 import {
   reservationApi,
   reservationTests,
@@ -1056,6 +1057,13 @@ export function getFiles(
   language: string = "go",
 ): PracticeFile[] {
   if (language === "go") return problem.files;
+  if (language === "java")
+    return javaFiles(
+      api[problem.id],
+      tests[problem.id],
+      hidden[problem.id],
+      problem.id === "transaction-history",
+    );
   if (language !== "python" && language !== "typescript")
     throw new Error(`Unsupported language: ${language}`);
   const python = language === "python";
@@ -1094,6 +1102,8 @@ export function languageNotes(
   _problem: PracticeProblem,
   language: string,
 ): string {
+  if (language === "java")
+    return "Keep the PascalCase API names shown in the requirements. Implementation.NewX(...) creates an instance. Go (value, bool) results become Pair<T> records with value() and ok() accessors; slices become arrays. Use integer cents and timestamps. Entry uses new Entry(ID, Timestamp, Cents, Category) with mutable named fields. Add personal tests as *Test.java classes with public static void main(String[] args). The JDK compiles and runs tests without downloaded dependencies.";
   if (language === "python")
     return "Keep the PascalCase API names shown in the requirements. NewX(...) creates an instance. Go (value, bool) results become Python (value, bool) tuples; slices become lists. Use integer cents and timestamps. Entry uses Entry(ID, Timestamp, Cents, Category) with named attributes. Go from parameters are named from_ in Python.";
   if (language === "typescript")

@@ -17,13 +17,18 @@ const fixtures: Record<string, Record<string, string>> = {
       'import unittest\nclass PersonalTests(unittest.TestCase):\n    def test_anything(self):\n        print("PERSONAL_TEST_OUTPUT")\n        self.assertEqual(2+2, 4)\n',
     "test_level_2.py": 'raise RuntimeError("future test must not run")\n',
   },
+  java: {
+    "SandboxTest.java":
+      'public class SandboxTest { public static void main(String[] args) { System.out.println("PERSONAL_TEST_OUTPUT"); if (2+2 != 4) throw new AssertionError("arithmetic"); } }',
+    "Level2Test.java": "future source must not compile",
+  },
   typescript: {
     "sandbox.test.ts":
       'import {test} from "node:test"; import assert from "node:assert/strict"; test("anything you want",()=>{console.log("PERSONAL_TEST_OUTPUT"); assert.equal(2+2,4)});\n',
     "level_2.test.ts": 'throw new Error("future test must not run");\n',
   },
 };
-for (const language of ["go", "python", "typescript"] as const) {
+for (const language of ["go", "python", "typescript", "java"] as const) {
   const files = fixtures[language];
   const dir = await mkdtemp(path.join(tmpdir(), "lld-docker-check-"));
   try {
@@ -42,7 +47,7 @@ for (const language of ["go", "python", "typescript"] as const) {
     assert.equal(result.passed, true, result.output);
     assert.match(result.output, /PERSONAL_TEST_OUTPUT/);
     const sandbox = Object.keys(files).find((name) =>
-      name.startsWith("sandbox"),
+      name.toLowerCase().startsWith("sandbox"),
     );
     if (!sandbox) throw new Error("Missing sandbox fixture");
     const content = files[sandbox].replace("2+2", "2+3");

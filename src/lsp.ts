@@ -4,7 +4,7 @@ export type Session = {
   sessionId: string;
   rootUri: string;
   lspAvailable: boolean;
-  language?: "go" | "python" | "typescript";
+  language?: "go" | "python" | "typescript" | "java";
 };
 export type PracticeFile = { path: string; content: string; readOnly: boolean };
 type LspRange = {
@@ -96,7 +96,7 @@ export class GoLanguageService {
   open(model: monaco.editor.ITextModel) {
     if (
       !this.session.lspAvailable ||
-      !["go", "python", "typescript"].includes(model.getLanguageId())
+      !["go", "python", "typescript", "java"].includes(model.getLanguageId())
     )
       return;
     const uri = model.uri.toString();
@@ -114,7 +114,7 @@ export class GoLanguageService {
   change(model: monaco.editor.ITextModel) {
     if (
       !this.session.lspAvailable ||
-      !["go", "python", "typescript"].includes(model.getLanguageId())
+      !["go", "python", "typescript", "java"].includes(model.getLanguageId())
     )
       return;
     const uri = model.uri.toString();
@@ -132,7 +132,9 @@ export class GoLanguageService {
         ? "Pyright"
         : this.session.language === "typescript"
           ? "TypeScript LSP"
-          : "gopls";
+          : this.session.language === "java"
+            ? "JDT LS"
+            : "gopls";
     if (!this.session.lspAvailable) {
       this.onStatus(`${serverName} unavailable`);
       return;
