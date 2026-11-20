@@ -40,6 +40,18 @@ export const roadmap = [
         "Practice simple control rules and explicit changes of state.",
       ],
       [
+        "coupon-registry",
+        "Model promotion identity, validation, and explicit activation rules.",
+      ],
+      [
+        "task-checklist",
+        "Practice task identity, completion state, and sorted snapshots.",
+      ],
+      [
+        "feature-flags",
+        "Resolve feature defaults and isolated overrides for individual users.",
+      ],
+      [
         "parking-lot",
         "Combine capacity and identity in a small real-world system.",
       ],
@@ -61,6 +73,14 @@ export const roadmap = [
       [
         "wallet-ledger",
         "Keep balances valid and make repeated operations safe.",
+      ],
+      [
+        "restaurant-orders",
+        "Coordinate order items, prices, and a controlled kitchen workflow.",
+      ],
+      [
+        "support-ticket-router",
+        "Route support work while respecting agent capacity and ticket state.",
       ],
       ["library-lending", "Coordinate members, copies, and borrowing rules."],
     ],
@@ -102,6 +122,10 @@ export const roadmap = [
         "card-limits",
         "Follow money through authorization, capture, and refunds.",
       ],
+      [
+        "pubsub-broker",
+        "Separate subscriptions and per-subscriber message delivery queues.",
+      ],
       ["lru-cache", "Maintain recency alongside values and capacity."],
     ],
   },
@@ -115,12 +139,24 @@ export const roadmap = [
         "Reject cycles, identify eligible work, and preserve dependency rules.",
       ],
       [
+        "ttl-key-value-store",
+        "Combine explicit expiry boundaries with conditional state updates.",
+      ],
+      [
         "rate-limiter",
         "Introduce explicit time and test exact window boundaries.",
       ],
       [
+        "auction-house",
+        "Protect bidding and closing rules across independent timed auctions.",
+      ],
+      [
         "account-transfers",
         "Move value atomically and reason about safe reversal.",
+      ],
+      [
+        "meeting-room-scheduler",
+        "Allocate rooms for intervals and reschedule without partial changes.",
       ],
       [
         "seat-booking",

@@ -1,3 +1,6 @@
+import { commerceTranslations } from "./commerceTranslations.ts";
+import { collaborationTranslations } from "./collaborationTranslations.ts";
+import { infrastructureTranslations } from "./infrastructureTranslations.ts";
 type LocalizedContent = {
   title: string;
   summary: string;
@@ -10,6 +13,9 @@ const level = (
   ...requirements: string[]
 ) => ({ title, description, requirements });
 export const problemTranslations: Record<string, LocalizedContent> = {
+  ...commerceTranslations,
+  ...collaborationTranslations,
+  ...infrastructureTranslations,
   "ride-dispatch": {
     title: "Distribuição de corridas",
     summary:

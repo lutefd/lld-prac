@@ -1,4 +1,23 @@
 export const roadmapTranslations: Record<string, string> = {
+  "Model promotion identity, validation, and explicit activation rules.":
+    "Modele a identidade de promoções, validações e regras explícitas de ativação.",
+  "Practice task identity, completion state, and sorted snapshots.":
+    "Pratique identidade de tarefas, estado de conclusão e cópias ordenadas.",
+  "Resolve feature defaults and isolated overrides for individual users.":
+    "Resolva valores padrão de funcionalidades e substituições isoladas por usuário.",
+  "Coordinate order items, prices, and a controlled kitchen workflow.":
+    "Coordene itens de pedidos, preços e um fluxo controlado de cozinha.",
+  "Route support work while respecting agent capacity and ticket state.":
+    "Distribua solicitações de suporte respeitando a capacidade e o estado dos chamados.",
+  "Separate subscriptions and per-subscriber message delivery queues.":
+    "Separe assinaturas e filas de entrega de mensagens por assinante.",
+  "Combine explicit expiry boundaries with conditional state updates.":
+    "Combine limites explícitos de expiração com atualizações condicionais de estado.",
+  "Allocate rooms for intervals and reschedule without partial changes.":
+    "Aloque salas por intervalo e reagende sem alterações parciais.",
+  "Protect bidding and closing rules across independent timed auctions.":
+    "Proteja regras de lances e encerramento em leilões independentes com prazo.",
+
   "Code editor": "Editor de código",
   "Drag to resize · Arrow keys to adjust · Double-click to reset":
     "Arraste para redimensionar · Use as setas para ajustar · Clique duas vezes para restaurar",

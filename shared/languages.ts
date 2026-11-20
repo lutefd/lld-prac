@@ -1,3 +1,14 @@
+import { commerceApi, commerceTests, commerceHidden } from "./commerce.ts";
+import {
+  collaborationApi,
+  collaborationTests,
+  collaborationHidden,
+} from "./collaboration.ts";
+import {
+  infrastructureApi,
+  infrastructureTests,
+  infrastructureHidden,
+} from "./infrastructure.ts";
 import type { PracticeProblem, PracticeFile } from "./problems.ts";
 import type { Command } from "./case-support.ts";
 import {
@@ -889,6 +900,9 @@ Object.assign(
   easySystemApi,
   reservationApi,
   fundamentalApi,
+  commerceApi,
+  collaborationApi,
+  infrastructureApi,
 );
 Object.assign(
   tests,
@@ -897,6 +911,9 @@ Object.assign(
   easySystemTests,
   reservationTests,
   fundamentalTests,
+  commerceTests,
+  collaborationTests,
+  infrastructureTests,
 );
 Object.assign(
   hidden,
@@ -905,6 +922,9 @@ Object.assign(
   easySystemHidden,
   reservationHidden,
   fundamentalHidden,
+  commerceHidden,
+  collaborationHidden,
+  infrastructureHidden,
 );
 
 const pyType: Record<string, string> = {
@@ -925,6 +945,7 @@ const pyReturn: Record<string, [string, string]> = {
   b: ["bool", "False"],
   n: ["int", "0"],
   pair: ["tuple[str, bool]", '("", False)'],
+  boolpair: ["tuple[bool, bool]", "(False, False)"],
   money: ["tuple[int, bool]", "(0, False)"],
   strings: ["list[str]", "[]"],
   entries: ["list[Entry]", "[]"],
@@ -934,6 +955,7 @@ const tsReturn: Record<string, [string, string]> = {
   b: ["boolean", "false"],
   n: ["number", "0"],
   pair: ["[string, boolean]", '["", false]'],
+  boolpair: ["[boolean, boolean]", "[false, false]"],
   money: ["[number, boolean]", "[0, false]"],
   strings: ["string[]", "[]"],
   entries: ["Entry[]", "[]"],

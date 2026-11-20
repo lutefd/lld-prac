@@ -1129,17 +1129,18 @@ function Workspace({
               </span>
             </div>
             <div className="category-tabs">
-              {["All exercises", "Ride-hailing", "Banking", "Fundamentals"].map(
-                (c) => (
-                  <button
-                    className={category === c ? "selected" : ""}
-                    key={c}
-                    onClick={() => setCategory(c)}
-                  >
-                    {t(c)}
-                  </button>
-                ),
-              )}
+              {[
+                "All exercises",
+                ...new Set(problems.map((problem) => problem.category)),
+              ].map((c) => (
+                <button
+                  className={category === c ? "selected" : ""}
+                  key={c}
+                  onClick={() => setCategory(c)}
+                >
+                  {t(c)}
+                </button>
+              ))}
             </div>
             <div className="exercise-grid">
               {filtered.map((p) => (
