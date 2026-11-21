@@ -126,6 +126,15 @@ export class GoLanguageService {
     }).catch(() => this.onStatus("Language server disconnected"));
   }
 
+  close(model: monaco.editor.ITextModel) {
+    const uri = model.uri.toString();
+    monaco.editor.setModelMarkers(model, "practice-lsp", []);
+    if (!this.versions.delete(uri) || !this.session.lspAvailable) return;
+    this.request("textDocument/didClose", {
+      textDocument: { uri },
+    }).catch(() => undefined);
+  }
+
   register() {
     const serverName =
       this.session.language === "python"

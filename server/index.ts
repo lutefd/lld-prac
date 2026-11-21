@@ -42,7 +42,7 @@ type AppOptions = {
   executeTests?: typeof runTests;
 };
 type PracticeApp = Express & { close: () => void };
-import { mkdir, writeFile, readdir, rm } from "node:fs/promises";
+import { mkdir, writeFile, readdir, rm, rmdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { randomUUID } from "node:crypto";
@@ -354,9 +354,10 @@ export function createApp({
             path.join(session.directory, file.path),
             file.content,
           );
-          session.files.find(
-            (original) => original.path === file.path,
-          )!.content = file.content;
+          const original = session.files.find(
+            (item) => item.path === file.path,
+          );
+          if (original) original.content = file.content;
         }),
       );
     });
@@ -509,6 +510,49 @@ export function createApp({
         throw error;
       }
       res.status(201).json({ file });
+    } catch (error) {
+      next(error);
+    }
+  });
+  app.post("/api/workspace/:id/delete-file", async (req, res, next) => {
+    const session = req.workspace;
+    if (session.running)
+      return res
+        .status(409)
+        .json({ error: "Tests are already queued or running" });
+    try {
+      const filePath = req.body?.path;
+      const index =
+        typeof filePath === "string"
+          ? session.files.findIndex(
+              (file) => file.path === filePath && file.userCreated === true,
+            )
+          : -1;
+      if (index === -1)
+        return res
+          .status(400)
+          .json({ error: "Only added files can be removed" });
+      const [removed] = session.files.splice(index, 1);
+      const fullPath = path.join(session.directory, removed.path);
+      const remove = session.saving.then(async () => {
+        await rm(fullPath, { force: true });
+        let directory = path.dirname(fullPath);
+        while (
+          directory !== session.directory &&
+          directory.startsWith(`${session.directory}${path.sep}`)
+        ) {
+          try {
+            await rmdir(directory);
+          } catch {
+            break;
+          }
+          directory = path.dirname(directory);
+        }
+        session.lsp?.diagnostics.delete(pathToFileURL(fullPath).href);
+      });
+      session.saving = remove.catch(() => {});
+      await remove;
+      res.json({ deleted: removed.path });
     } catch (error) {
       next(error);
     }

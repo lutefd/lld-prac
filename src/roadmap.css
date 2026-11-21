@@ -145,11 +145,11 @@
   flex: 1;
 }
 .roadmap-case strong {
-  font-size: 14px;
+  font-size: 15px;
 }
 .roadmap-case > span,
 .roadmap-progress {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--muted);
   line-height: 1.5;
 }
