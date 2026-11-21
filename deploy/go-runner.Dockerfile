@@ -4,11 +4,40 @@ ENV GOCACHE=/opt/workbench/go-cache \
     GOPROXY=off \
     GOTOOLCHAIN=local \
     CGO_ENABLED=0
-# Prewarm testing and common stdlib packages rather than all of std, keeping
-# the symlinked per-run cache small and fast to seed.
-RUN go build testing fmt sort strings strconv slices maps errors math math/rand \
-    sync sync/atomic time container/heap container/list bytes regexp unicode \
-    reflect context encoding/json
+# Prewarm the test cache via an actual `go test` using the same go.mod version
+# as the exercises so `testing/internal/testdeps` and all transitive test
+# packages hit the cache (dropping per-run compiles from ~53 to 2).
+RUN mkdir -p /tmp/warmup \
+    && printf 'module warmup\n\ngo 1.22\n' > /tmp/warmup/go.mod \
+    && printf '%s\n' \
+        'package warmup' \
+        'import (' \
+        '  _ "bytes"' \
+        '  _ "container/heap"' \
+        '  _ "container/list"' \
+        '  _ "context"' \
+        '  _ "encoding/json"' \
+        '  _ "errors"' \
+        '  _ "fmt"' \
+        '  _ "maps"' \
+        '  _ "math"' \
+        '  _ "math/rand"' \
+        '  _ "reflect"' \
+        '  _ "regexp"' \
+        '  _ "slices"' \
+        '  _ "sort"' \
+        '  _ "strconv"' \
+        '  _ "strings"' \
+        '  _ "sync"' \
+        '  _ "sync/atomic"' \
+        '  "testing"' \
+        '  _ "time"' \
+        '  _ "unicode"' \
+        ')' \
+        'func TestWarmup(t *testing.T) {}' \
+        > /tmp/warmup/warmup_test.go \
+    && (cd /tmp/warmup && go test -count=1 .) \
+    && rm -rf /tmp/warmup
 COPY deploy/go-runner-entrypoint.sh /usr/local/bin/workbench-go-runner
 ENV GOCACHE=/tmp/go-cache
 ENTRYPOINT ["/usr/local/bin/workbench-go-runner"]
