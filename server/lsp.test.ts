@@ -113,8 +113,10 @@ for (const action of ["suspend", "dispose"] as const) {
       } finally {
         // Ensure a broken cleanup implementation cannot leave the fixture alive.
         try {
-          process.kill(-lsp.process.pid!, "SIGKILL");
-        } catch {}
+          if (lsp.process.pid) process.kill(-lsp.process.pid, "SIGKILL");
+        } catch {
+          // The fixture process may already have terminated.
+        }
         lsp.dispose();
       }
     },

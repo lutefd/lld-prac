@@ -101,9 +101,12 @@ export function runProcess(
     });
     const stop = () => {
       try {
-        if (process.platform !== "win32") process.kill(-child.pid!, "SIGKILL");
+        if (process.platform !== "win32" && child.pid)
+          process.kill(-child.pid, "SIGKILL");
         else child.kill("SIGKILL");
-      } catch {}
+      } catch {
+        // Process termination is idempotent.
+      }
     };
     const finish = (passed: boolean) => {
       if (finished) return;

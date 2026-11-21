@@ -35,7 +35,10 @@ test("browser locale and system theme are defaults; overrides persist without re
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
     "Small steps. Stronger designs.",
   );
-  await dialog.getByRole("button", { name: "Close settings", exact: true }).click();
+  dialog = page.getByRole("dialog", { name: "Settings", exact: true });
+  await dialog
+    .getByRole("button", { name: "Close settings", exact: true })
+    .click();
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
@@ -67,6 +70,7 @@ test("browser locale and system theme are defaults; overrides persist without re
     fullPage: true,
     animations: "disabled",
   });
+  dialog = page.getByRole("dialog", { name: "Configurações", exact: true });
   await dialog.getByRole("button", { name: "Claro", exact: true }).click();
   await expect(page.locator(".monaco-editor")).toHaveClass(/vs(\s|$)/);
   await dialog

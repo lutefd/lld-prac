@@ -108,15 +108,19 @@ test("new themes expose all difficulty levels and remain usable on mobile", asyn
 }) => {
   await page.goto("/practice/bounded-stack");
   await page.getByRole("button", { name: "Open exercise library" }).click();
-  for (const category of ["Commerce", "Collaboration", "Infrastructure"]) {
+  for (const [category, count, perDifficulty] of [
+    ["Commerce", 3, 1],
+    ["Collaboration", 3, 1],
+    ["Infrastructure", 6, 2],
+  ] as const) {
     await page.getByRole("button", { name: category, exact: true }).click();
-    await expect(page.locator(".exercise-card")).toHaveCount(3);
+    await expect(page.locator(".exercise-card")).toHaveCount(count);
     for (const difficulty of ["Easy", "Medium", "Hard"]) {
       await expect(
         page
           .locator(".exercise-card .difficulty")
           .filter({ hasText: difficulty }),
-      ).toHaveCount(1);
+      ).toHaveCount(perDifficulty);
     }
   }
   await page.setViewportSize({ width: 375, height: 812 });

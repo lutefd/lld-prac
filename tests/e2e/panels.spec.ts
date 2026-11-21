@@ -3,7 +3,8 @@ import { test, expect, type Locator, type Page } from "@playwright/test";
 async function dimensions(locator: Locator) {
   const box = await locator.boundingBox();
   expect(box, "The panel must have a visible bounding box").not.toBeNull();
-  return box!;
+  if (!box) throw new Error("The panel must have a visible bounding box");
+  return box;
 }
 
 async function drag(page: Page, separator: Locator, dx: number, dy: number) {

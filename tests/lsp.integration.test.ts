@@ -47,7 +47,8 @@ function locate(text: string, needle: string, after = false): Position {
   const offset = text.lastIndexOf(needle);
   assert.notEqual(offset, -1, `Fixture must contain ${needle}`);
   const lines = text.slice(0, offset + (after ? needle.length : 0)).split("\n");
-  return { line: lines.length - 1, character: lines.at(-1)!.length };
+  const lastLine = lines.at(-1) ?? "";
+  return { line: lines.length - 1, character: lastLine.length };
 }
 
 async function eventually<T>(
@@ -79,7 +80,7 @@ for (const fixture of fixtures) {
       const address = server.address();
       assert(address && typeof address === "object");
       const base = `http://127.0.0.1:${address.port}`;
-      async function json(route: string, body?: unknown): Promise<any> {
+      async function json<T>(route: string, body?: unknown): Promise<T> {
         const response = await fetch(
           `${base}${route}`,
           body === undefined
@@ -92,16 +93,18 @@ for (const fixture of fixtures) {
         );
         const data = await response.json();
         assert.equal(response.ok, true, `${route}: ${JSON.stringify(data)}`);
-        return data;
+        return data as T;
       }
       try {
-        const health = await json("/api/health");
+        const health = await json<{
+          languages: Record<string, { lsp: boolean }>;
+        }>("/api/health");
         assert.equal(
           health.languages[fixture.language].lsp,
           true,
           `${fixture.language} language server must be installed for this integration suite`,
         );
-        const session: Workspace = await json("/api/workspace", {
+        const session = await json<Workspace>("/api/workspace", {
           problemId: "ride-dispatch",
           language: fixture.language,
         });
@@ -123,43 +126,53 @@ for (const fixture of fixtures) {
         const text = source.content + fixture.extra;
         const uri = `${session.rootUri}/${source.path}`;
         const route = `/api/workspace/${session.sessionId}`;
-        const lsp = async (method: string, params: unknown) =>
-          (await json(`${route}/lsp`, { method, params })).result;
+        const lsp = async <T = unknown>(
+          method: string,
+          params: unknown,
+        ): Promise<T> =>
+          (await json<{ result: T }>(`${route}/lsp`, { method, params }))
+            .result;
         await lsp("textDocument/didOpen", {
           textDocument: { uri, languageId: fixture.language, version: 1, text },
         });
-        const hover = await eventually(
+        const hover = await eventually<{ contents?: unknown } | null>(
           () =>
-            lsp("textDocument/hover", {
+            lsp<{ contents?: unknown } | null>("textDocument/hover", {
               textDocument: { uri },
               position: locate(text, "practiceValue"),
             }),
           (value) => Boolean(value?.contents),
           `${fixture.language} hover`,
         );
+        assert(hover, `${fixture.language} hover must resolve`);
         assert.match(
           JSON.stringify(hover.contents),
           /practiceValue|string|str|sample/i,
         );
-        const completion = await eventually(
+        type CompletionResult =
+          | Array<{ label: string }>
+          | { items: Array<{ label: string }> }
+          | null;
+        const completion = await eventually<CompletionResult>(
           () =>
-            lsp("textDocument/completion", {
+            lsp<CompletionResult>("textDocument/completion", {
               textDocument: { uri },
               position: locate(text, "practiceVal", true),
               context: { triggerKind: 1 },
             }),
           (value) =>
-            (Array.isArray(value) ? value : value?.items || []).some(
-              (item: { label: string }) => item.label.includes("practiceValue"),
+            (Array.isArray(value) ? value : value?.items || []).some((item) =>
+              item.label.includes("practiceValue"),
             ),
           `${fixture.language} symbol completion`,
         );
+        assert(completion, `${fixture.language} completion must resolve`);
         assert(
           (Array.isArray(completion) ? completion : completion.items).length >
             0,
         );
         const diagnosticReports = await eventually<{ diagnostics: Report[] }>(
-          () => json(`${route}/diagnostics`),
+          () => json<{ diagnostics: Report[] }>(`${route}/diagnostics`),
           (value) =>
             value.diagnostics.some(
               (report) =>

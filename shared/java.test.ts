@@ -8,32 +8,38 @@ import { problems } from "./problems.ts";
 import { getFiles } from "./languages.ts";
 
 test("Java contracts preserve typed tuple access, arrays, entry fields, and defensive-copy mutations", () => {
-  const files = (id: string) =>
-    getFiles(
-      problems.find((p) => p.id === id)!,
-      "java",
-    );
+  const files = (id: string) => {
+    const problem = problems.find((p) => p.id === id);
+    assert(problem, `Expected problem ${id}`);
+    return getFiles(problem, "java");
+  };
+  const fileContent = (
+    list: ReturnType<typeof getFiles>,
+    filePath: string,
+  ) => {
+    const found = list.find((f) => f.path === filePath);
+    assert(found, `Expected file ${filePath}`);
+    return found.content;
+  };
   const history = files("transaction-history");
   assert.match(
-    history.find((f) => f.path === "Implementation.java")!.content,
+    fileContent(history, "Implementation.java"),
     /Pair<Entry> Get/,
   );
   assert.match(
-    history.find((f) => f.path === "Level1Test.java")!.content,
+    fileContent(history, "Level1Test.java"),
     /s.Get\("a"\).ok\(\)/,
   );
   assert.match(
-    history.find((f) => f.path === "Level2Test.java")!.content,
+    fileContent(history, "Level2Test.java"),
     /s.List\(""\)\[0\].ID/,
   );
   assert.match(
-    files("multi-level-garage").find((f) => f.path === "Level1Test.java")!
-      .content,
+    fileContent(files("multi-level-garage"), "Level1Test.java"),
     /new String\[\]\{"L","SM"\}/,
   );
   assert.match(
-    files("fifo-queue").find((f) => f.path === "HiddenLevel3Test.java")!
-      .content,
+    fileContent(files("fifo-queue"), "HiddenLevel3Test.java"),
     /snapshot\[0\] = "changed"/,
   );
 });

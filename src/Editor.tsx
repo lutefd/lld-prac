@@ -6,7 +6,11 @@ import { GoLanguageService, type PracticeFile, type Session } from "./lsp";
 import { fontFamilyFor, registerEditorThemes } from "./editorThemes";
 
 // Bundle Monaco's worker with the application; no network-loaded editor or AI services.
-(globalThis as any).MonacoEnvironment = { getWorker: () => new EditorWorker() };
+(
+  globalThis as typeof globalThis & {
+    MonacoEnvironment?: { getWorker: () => Worker };
+  }
+).MonacoEnvironment = { getWorker: () => new EditorWorker() };
 // Assistance comes from the connected language server, avoiding duplicate TS suggestions.
 monaco.typescript.typescriptDefaults.setModeConfiguration({
   completionItems: false,
@@ -69,6 +73,9 @@ export default function Editor({
 
   useEffect(() => {
     if (!container.current) return;
+    const activeListeners = listeners.current;
+    const activeModels = models.current;
+    const activeSavedViews = savedViews.current;
     const service = new GoLanguageService(session, (status) =>
       callbacks.current.onStatus?.(status),
     );
@@ -106,16 +113,16 @@ export default function Editor({
     service.register();
     return () => {
       service.dispose();
-      listeners.current.forEach((listener) => listener.dispose());
-      listeners.current.clear();
+      activeListeners.forEach((listener) => listener.dispose());
+      activeListeners.clear();
       instance.dispose();
-      models.current.forEach((model) => model.dispose());
-      models.current.clear();
-      savedViews.current.clear();
+      activeModels.forEach((model) => model.dispose());
+      activeModels.clear();
+      activeSavedViews.clear();
       editor.current = null;
       languageService.current = null;
     };
-  }, [session.sessionId]);
+  }, [session]);
 
   useEffect(() => {
     monaco.editor.setTheme(resolvedEditorTheme);

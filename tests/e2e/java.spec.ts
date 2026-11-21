@@ -51,9 +51,9 @@ test("Java opens from the roadmap, preserves drafts, and keeps progress scoped t
       json: { passed: true, output: "JAVA_TESTS_PASSED", durationMs: 12 },
     });
   });
+  await expect(page.locator(".console-empty")).toContainText("javac + java");
   await page.getByRole("button", { name: "Run tests", exact: false }).click();
   await expect(page.locator(".raw-output")).toContainText("JAVA_TESTS_PASSED");
-  await expect(page.locator(".console-command")).toHaveText("javac + java");
   await expect(
     page.getByRole("button", { name: "Level 2", exact: true }),
   ).toBeEnabled();

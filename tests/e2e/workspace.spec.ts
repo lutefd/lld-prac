@@ -71,7 +71,7 @@ func TestArbitraryName(t *testing.T) { t.Log("MY_EDGE_CASE_OUTPUT"); d:=NewDispa
   );
   await page.getByLabel("Search exercises").fill("");
   await page.getByRole("button", { name: "Banking", exact: true }).click();
-  await expect(page.locator(".exercise-card")).toHaveCount(4);
+  await expect(page.locator(".exercise-card")).toHaveCount(5);
   await page.getByRole("button", { name: "Close exercise library" }).click();
   await page.screenshot({ path: "test-results/workbench.png", fullPage: true });
 });
