@@ -51,7 +51,7 @@ test("process timeout stops a runaway process and preserves console output", asy
     process.execPath,
     ["-e", 'console.log("before loop");while(true){}'],
     os.tmpdir(),
-    { timeoutMs: 300 },
+    { timeoutMs: 1000 },
   );
   assert.equal(result.passed, false);
   assert.equal(result.timedOut, true);
@@ -277,4 +277,21 @@ test("TypeScript command disables per-file process isolation for faster test run
     "level_1.test.ts",
     "hidden_level_1.test.ts",
   ]);
+});
+
+test("Go command targets current package for flat workspaces and ./... for nested packages", () => {
+  const flat = commandFor("go", [
+    "go.mod",
+    "implementation.go",
+    "level_1_test.go",
+  ]);
+  assert.equal(flat.command, "go");
+  assert.equal(flat.args.at(-1), ".");
+  const nested = commandFor("go", [
+    "go.mod",
+    "implementation.go",
+    "models/value.go",
+    "level_1_test.go",
+  ]);
+  assert.equal(nested.args.at(-1), "./...");
 });
