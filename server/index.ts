@@ -264,6 +264,11 @@ export function createApp({
   const removeWorkspace = (session: Workspace) => {
     session.closing = true;
     session.lsp?.dispose();
+    if (session.language === "java")
+      void rm(`${session.directory}.jdtls`, {
+        recursive: true,
+        force: true,
+      }).catch(console.error);
     sessions.delete(session.sessionId);
     if (!session.running)
       void rm(session.directory, { recursive: true, force: true }).catch(
@@ -387,6 +392,17 @@ export function createApp({
       const sessionId = randomUUID();
       directory = path.join(workspaceRoot, sessionId);
       await mkdir(directory, { recursive: true });
+      if (language === "java") {
+        // JDT LS needs a Java project to provide semantic diagnostics and completions.
+        await writeFile(
+          path.join(directory, ".project"),
+          `<projectDescription><name>practice-${sessionId}</name><buildSpec><buildCommand><name>org.eclipse.jdt.core.javabuilder</name></buildCommand></buildSpec><natures><nature>org.eclipse.jdt.core.javanature</nature></natures></projectDescription>`,
+        );
+        await writeFile(
+          path.join(directory, ".classpath"),
+          '<classpath><classpathentry kind="src" path="" excluding=".jdtls/**|bin/**"/><classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/><classpathentry kind="output" path="bin"/></classpath>',
+        );
+      }
       for (const file of files) {
         if (
           !/^[a-zA-Z0-9_./-]+$/.test(file.path) ||
@@ -419,9 +435,7 @@ export function createApp({
           session.lsp = new LanguageServer(
             rootUri,
             command,
-            language === "java"
-              ? ["-data", path.join(directory, ".jdtls")]
-              : args,
+            language === "java" ? ["-data", `${directory}.jdtls`] : args,
           );
           await session.lsp.initialize();
         } catch {
@@ -443,9 +457,11 @@ export function createApp({
     } catch (error) {
       created?.lsp?.dispose();
       if (directory)
-        await rm(directory, { recursive: true, force: true }).catch(
-          console.error,
-        );
+        await Promise.all(
+          [directory, `${directory}.jdtls`].map((target) =>
+            rm(target, { recursive: true, force: true }),
+          ),
+        ).catch(console.error);
       next(error);
     } finally {
       opening--;

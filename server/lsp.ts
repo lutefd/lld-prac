@@ -240,6 +240,7 @@ export class LanguageServer {
         },
       },
       initializationOptions: {
+        workspaceFolders: [this.rootUri],
         usePlaceholders: false,
         completeUnimported: true,
       },
