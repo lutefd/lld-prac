@@ -1,0 +1,30 @@
+# Workbench verification map
+
+Maintained source for verifying user-facing behavior of Workbench. Read this index, then the matching feature file.
+
+## Baseline preconditions
+
+- Instance started by `scripts/launch.sh`; `scripts/doctor.sh` exits 0.
+- Fresh browser context (empty localStorage) at `http://127.0.0.1:5173`.
+- Never drive an instance this run did not start.
+
+## Driving conventions
+
+- Prefer ARIA roles and labels over CSS classes; the few stable classes are listed in `SKILL.md`.
+- Wait on UI state (`.raw-output` text, headings), never fixed sleeps. Test runs can take up to 30s.
+- Monaco edits: click `.monaco-editor`, `ControlOrMeta+a`, `keyboard.insertText`.
+- Existing specs in `tests/e2e/` cover each feature; run them for regression, use `drive.mjs` for proof artifacts.
+
+## Proof and skip reporting
+
+- UI proof: screenshot plus ARIA snapshot, with the exercise heading visible.
+- Test-run proof: the runner output text from `.raw-output`.
+- Record the feature ID with every artifact. Report an unreachable path (e.g. Java without a JDK) with the unmet precondition; never claim it verified through another path.
+
+## Features
+
+- [Run tests](./run-tests.md): running supplied and personal tests, unlocking levels, draft restore.
+- [Roadmap](./roadmap.md): ordered catalog, language-specific progress, continue-the-path.
+- [Settings](./settings.md): theme, locale, persistence of preferences.
+- [Panels](./panels.md): resize, keyboard resize, collapse and restore.
+- [Files](./files.md): create extra files, language scoping, persistence.
