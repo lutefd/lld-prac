@@ -9,6 +9,8 @@ Project skills live in `.agents/skills/<name>/SKILL.md` (the canonical copy). `.
 - `verify-workbench`: launch and drive the real app (headless Chromium) to prove a UI or test-run change works.
 - `verify-queue`: exhaustively check `server/queue.ts` (`TestQueue`) for slot leaks, ordering, timeout and close bugs; run when the queue or its call sites change.
 
+- `verify-file-paths`: exhaustively check `validateNewFile` (user-created file paths) for traversal, hidden-test, extension and case-collision bugs; run when it or the create-file endpoints change.
+
 ## Checks
 
 - `npm run lint`, `npm run typecheck`, `npm test`, `npm run test:e2e`.

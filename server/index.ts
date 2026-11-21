@@ -235,6 +235,16 @@ export function createApp({
   const queue = new TestQueue(queueOptions);
   let opening = 0;
   let closed = false;
+  const allowedPorts = [
+    ...new Set([
+      "3001",
+      "5173",
+      "4173",
+      String(setting("PRACTICE_API_PORT", 3001)),
+      String(setting("PRACTICE_WEB_PORT", 5173)),
+      String(setting("PRACTICE_PREVIEW_PORT", 4173)),
+    ]),
+  ];
   const origins = new Set(allowedOrigins.map((value) => new URL(value).origin));
   const hostnames = new Set([
     "localhost",
@@ -330,7 +340,7 @@ export function createApp({
       if (
         !origins.has(origin.origin) &&
         (!["localhost", "127.0.0.1", "[::1]"].includes(origin.hostname) ||
-          !["3001", "5173", "4173"].includes(origin.port))
+          !allowedPorts.includes(origin.port))
       ) {
         res.status(403).json({ error: "Origin is not allowed" });
         return;
@@ -724,10 +734,11 @@ if (
   path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 ) {
   const app = createApp();
+  const apiPort = setting("PRACTICE_API_PORT", 3001);
   const server = app.listen(
-    3001,
+    apiPort,
     process.env.PRACTICE_HOST || "127.0.0.1",
-    () => console.log("Practice API: http://127.0.0.1:3001"),
+    () => console.log(`Practice API: http://127.0.0.1:${apiPort}`),
   );
   for (const signal of ["SIGINT", "SIGTERM"])
     process.on(signal, () => {

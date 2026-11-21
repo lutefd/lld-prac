@@ -5,7 +5,7 @@ description: Launch and drive the Workbench LLD practice app (React + Monaco UI 
 
 # Verify Workbench
 
-Workbench is a local web app: Vite UI (`127.0.0.1:5173`) proxying `/api` to an Express server (`127.0.0.1:3001`) that runs real Go/Python/TypeScript/Java tests natively. The repo's own Playwright specs in `tests/e2e/` are the primary harness; `scripts/drive.mjs` adds evidence-capturing drives.
+Workbench is a local web app: Vite UI (default `127.0.0.1:5173`) proxying `/api` to an Express server (default `127.0.0.1:3001`) that runs real Go/Python/TypeScript/Java tests natively. The repo's own Playwright specs in `tests/e2e/` are the primary harness; `scripts/drive.mjs` adds evidence-capturing drives.
 
 Paths below are relative to the repo root. Read `features/README.md` first, then the feature file you are proving.
 
@@ -17,7 +17,7 @@ Paths below are relative to the repo root. Read `features/README.md` first, then
 
 Starts `node scripts/dev.ts` with `PRACTICE_WORKSPACE_ROOT=.practice/verify-run/workspaces` and `PRACTICE_MAX_WORKSPACES=100`, records its pid in `.practice/verify-run/pid`, and returns `READY` only when `/api/health` and the UI both answer. Log: `.practice/verify-run/dev.log`. Both `.practice/` and `test-results/` are gitignored.
 
-**Isolation:** ports 5173 and 3001 are hardcoded, so only one instance can run. `launch.sh` refuses (exit 2) if either port is busy. Never drive or kill an instance you did not start; ask the user instead. Browser state (drafts, progress, settings) lives in localStorage, and each drive uses a fresh browser context, so it starts empty.
+**Isolation:** `launch.sh` picks two free ports (`PRACTICE_WEB_PORT`, `PRACTICE_API_PORT`; the app also honors `PRACTICE_PREVIEW_PORT`) and records them in `.practice/verify-run/env`, so instances in different checkouts or worktrees run side by side. One instance per checkout: it refuses (exit 2) if this checkout's instance is still running. Never drive or kill an instance you did not start; ask the user instead. Browser state (drafts, progress, settings) lives in localStorage, and each drive uses a fresh browser context, so it starts empty.
 
 Production-mode check (`npm run build && npm start`, port 4173) is separate; build it only when the change touches bundling.
 
@@ -27,11 +27,11 @@ Production-mode check (`npm run build && npm start`, port 4173) is separate; bui
 .agents/skills/verify-workbench/scripts/doctor.sh
 ```
 
-Read-only. Checks our pid is alive, `/api/health`, 44 exercises from `/api/problems`, the UI serves, and `go`/`python3`/`node` exist. Java is `runtime:false` unless a JDK is usable; Java features then report as unreachable, not passed. Run doctor first whenever anything looks off.
+Read-only. Checks our pid is alive, `/api/health`, 44 exercises from `/api/problems`, the UI serves, and `go`/`python3`/`node` exist. Java is `runtime:false` unless a JDK 21+ is on `PATH` (on macOS Homebrew `openjdk@21` is keg-only: `export JAVA_HOME=$(brew --prefix openjdk@21)/libexec/openjdk.jdk/Contents/Home PATH="$JAVA_HOME/bin:$PATH"` before launching) and `jdtls` for editing; Java features then report as unreachable, not passed. Run doctor first whenever anything looks off.
 
 ## Drive
 
-- Existing specs (preferred for regression): `npx playwright test tests/e2e/<file>.spec.ts`. Playwright reuses the launched server (`reuseExistingServer` outside CI). Files: roadmap, preferences, panels, files, workspace, language-switching, java.
+- Existing specs (preferred for regression): `npx playwright test tests/e2e/<file>.spec.ts`. Load the ports first: `. .practice/verify-run/env && npx playwright test ...`. Playwright then reuses the launched server (`reuseExistingServer` outside CI). Files: roadmap, preferences, panels, files, workspace, language-switching, java.
 - Evidence drive: `node .agents/skills/verify-workbench/scripts/drive.mjs run-tests <exercise-slug> <go|python|typescript|java>` opens `/practice/<slug>`, clicks **Run tests**, waits for runner output, and writes proof (below).
 - Ad hoc: write a Playwright script that resolves `@playwright/test` from the repo root like `drive.mjs` does.
 
@@ -53,4 +53,4 @@ Proof goes to `test-results/verify/<action>-<exercise>-<language>/`: `1-before.p
 .agents/skills/verify-workbench/scripts/cleanup.sh
 ```
 
-SIGTERMs only the recorded pid (dev.ts stops its children), then deletes `.practice/verify-run/`. Evidence under `test-results/verify/` is kept. Run it after failed attempts too, and confirm with `lsof -nP -iTCP:5173 -iTCP:3001 -sTCP:LISTEN` that nothing remains.
+SIGTERMs only the recorded pid (dev.ts stops its children), then deletes `.practice/verify-run/`. Evidence under `test-results/verify/` is kept. Run it after failed attempts too, and confirm with `lsof -nP -iTCP:$PRACTICE_WEB_PORT -iTCP:$PRACTICE_API_PORT -sTCP:LISTEN` (source the env file first) that nothing remains.

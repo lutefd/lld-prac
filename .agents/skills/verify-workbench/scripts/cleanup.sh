@@ -7,5 +7,5 @@ if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
   kill -TERM "$pid"; for i in 1 2 3 4 5 6 7 8 9 10; do kill -0 "$pid" 2>/dev/null || break; sleep 1; done
   kill -0 "$pid" 2>/dev/null && kill -KILL "$pid"
 fi
-rm -rf "$RUN"
+. "$RUN/env" 2>/dev/null; rm -rf "$RUN"
 echo "cleaned"
