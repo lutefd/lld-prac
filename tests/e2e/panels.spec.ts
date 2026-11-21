@@ -122,15 +122,11 @@ test("all panes collapse, stay collapsed after reload, and can be restored", asy
   await expect(page.locator(".editor-status")).toBeInViewport();
 });
 
-test("focus mode frees vertical space, preserves workspace controls, and persists", async ({
+test("compact toolbar omits the branding bar and keeps timer + settings controls", async ({
   page,
 }) => {
-  const workspace = page.locator(".workspace");
-  const before = await dimensions(workspace);
-  await page
-    .getByRole("button", { name: "Enter focus mode", exact: true })
-    .click();
-  await expect(page.locator(".app-header")).not.toBeVisible();
+  await expect(page.locator(".app-header")).toHaveCount(0);
+  await expect(page.locator(".workspace-toolbar")).toBeVisible();
   await expect(page.locator(".requirements-panel")).toBeVisible();
   await expect(page.locator(".monaco-editor")).toBeVisible();
   await expect(page.getByLabel("Programming language")).toBeVisible();
@@ -143,25 +139,17 @@ test("focus mode frees vertical space, preserves workspace controls, and persist
   await expect(
     page.getByRole("button", { name: "Run tests", exact: false }),
   ).toBeVisible();
-  await expect
-    .poll(async () => (await dimensions(workspace)).height)
-    .toBeGreaterThanOrEqual(before.height + 90);
-  expect((await dimensions(workspace)).y).toBeLessThan(before.y);
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Settings", exact: true });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("checkbox", { name: /Practice timer/ }).uncheck();
+  await expect(timer).toHaveCount(0);
+  await dialog.getByRole("button", { name: "Close settings", exact: true }).click();
   await page.reload();
   await expect(
-    page.getByRole("button", { name: "Exit focus mode", exact: true }),
-  ).toBeVisible();
-  await expect(page.locator(".app-header")).not.toBeVisible();
-  await expect(page.locator(".requirements-panel")).toBeVisible();
-  await expect(page.locator(".monaco-editor")).toBeVisible();
-  await page
-    .getByRole("button", { name: "Exit focus mode", exact: true })
-    .click();
-  await expect(page.locator(".app-header")).toBeVisible();
+    page.getByTitle("Start or pause practice timer", { exact: true }),
+  ).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "Open exercise library", exact: true }),
   ).toBeVisible();
-  await expect
-    .poll(async () => (await dimensions(workspace)).height)
-    .toBeCloseTo(before.height, 0);
 });

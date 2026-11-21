@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ArrowLeft,
   ArrowUpRight,
   BookOpen,
   Check,
   CheckCheck,
   ChevronDown,
-  ChevronRight,
   Clock3,
   Code2,
   FileCode2,
@@ -17,8 +15,9 @@ import {
   LockKeyhole,
   PanelLeftClose,
   PanelBottomClose,
-  Maximize2,
-  Minimize2,
+  LibraryBig,
+  Map as MapIcon,
+  Pause,
   Plus,
   Play,
   RotateCcw,
@@ -27,7 +26,6 @@ import {
   Terminal,
   Trash2,
   X,
-  Zap,
 } from "lucide-react";
 import Editor from "./Editor";
 import PanelDivider from "./PanelDivider";
@@ -213,10 +211,10 @@ function Workspace({
       console: 235,
     }),
   );
-  const [focusMode, setFocusMode] = useState(() =>
-    read("workbench.focus", false),
+  const [showTimer, setShowTimer] = useState(() =>
+    read("workbench.timer.visible", true),
   );
-  useEffect(() => write("workbench.focus", focusMode), [focusMode]);
+  useEffect(() => write("workbench.timer.visible", showTimer), [showTimer]);
   const workspaceRef = useRef<HTMLElement>(null);
   const codingRef = useRef<HTMLElement>(null);
   const codingBodyRef = useRef<HTMLDivElement>(null);
@@ -465,6 +463,14 @@ function Workspace({
     }
   };
   const activeFile = files.find((f) => f.path === activePath);
+  const runnerCommand =
+    language === "go"
+      ? "go test -v"
+      : language === "python"
+        ? "python -m unittest -v"
+        : language === "java"
+          ? "javac + java"
+          : "node --test";
   const selectedLevel = problem.levels[level - 1];
   const elapsed = `${Math.floor(seconds / 60)
     .toString()
@@ -485,81 +491,45 @@ function Workspace({
         .includes(query.toLowerCase()),
   );
   return (
-    <div className={`app-shell ${focusMode ? "focus-mode" : ""}`}>
-      <header className="app-header">
-        <button
-          className="brand"
-          onClick={() => setLibrary(true)}
-          aria-label={t("Open exercise library")}
-        >
-          <span className="brand-symbol">
-            <Code2 size={22} />
-          </span>
-          <span>
-            workbench<span className="brand-period">.</span>
-          </span>
-          <span className="local-badge">
-            <span />
-            {t("LOCAL")}
-          </span>
-        </button>
-        <div className="header-divider" />
-        <button className="breadcrumb" onClick={() => setLibrary(true)}>
-          {t("Practice")} <ChevronRight size={13} />{" "}
-          <span>{t("Low-level design")}</span>
-        </button>
-        <div className="header-spacer" />
-        <PreferencesControls />
-        <a className="roadmap-link" href="/" onClick={followLink}>
-          {t("Practice roadmap")} <ArrowUpRight size={14} />
-        </a>
-        <span className="distraction-free">
-          <span />
-          {t("No AI. Just you and the code.")}
-        </span>
-        <a
-          className="github-link"
-          href="https://github.com/lutefd/lld-prac"
-          target="_blank"
-          rel="noreferrer"
-        >
-          GitHub <ArrowUpRight size={14} />
-        </a>
-      </header>
-      <div className="workspace-toolbar">
+    <div className="app-shell">
+      <header className="workspace-toolbar">
         <div className="problem-heading">
           <button
-            className="icon-button back"
+            className="brand-button"
             onClick={() => setLibrary(true)}
+            aria-label={t("Open exercise library")}
             title={t("Exercise library")}
           >
-            <ArrowLeft size={18} />
+            <Code2 size={17} />
           </button>
-          <div>
-            <div className="eyebrow">
-              {t(problem.category)} <span>/</span> {t("LLD PRACTICE")}
-            </div>
-            <h1>{problem.title}</h1>
-          </div>
+          <a
+            className="icon-button roadmap-shortcut"
+            href="/"
+            onClick={followLink}
+            aria-label={t("Practice roadmap")}
+            title={t("Practice roadmap")}
+          >
+            <MapIcon size={16} />
+          </a>
+          <span className="toolbar-divider" />
+          <h1 title={problem.title}>{problem.title}</h1>
           <span className={`difficulty ${problem.difficulty.toLowerCase()}`}>
             {t(problem.difficulty)}
           </span>
         </div>
         <div className="workspace-actions">
-          <button
-            className={`timer ${timer ? "active" : ""}`}
-            onClick={() => setTimer((t) => !t)}
-            title={t("Start or pause practice timer")}
-          >
-            <Clock3 size={15} />
-            <span>{elapsed}</span>
-            <span className="timer-label">
-              {timer ? t("Pause") : t("Start timer")}
-            </span>
-          </button>
-          <span className="vertical-rule" />
+          {showTimer && (
+            <button
+              className={`timer ${timer ? "active" : ""}`}
+              onClick={() => setTimer((t) => !t)}
+              title={t("Start or pause practice timer")}
+              aria-label={t("Start or pause practice timer")}
+            >
+              {timer ? <Pause size={13} /> : <Clock3 size={14} />}
+              <span>{elapsed}</span>
+            </button>
+          )}
           <label className="language-select">
-            <Code2 size={16} />
             <select
               aria-label={t("Programming language")}
               value={language}
@@ -573,37 +543,78 @@ function Workspace({
             </select>
             <ChevronDown size={13} />
           </label>
-          <button
-            className="icon-button focus-toggle"
-            title={focusMode ? t("Exit focus mode") : t("Enter focus mode")}
-            aria-pressed={focusMode}
-            onClick={() => setFocusMode((value) => !value)}
-          >
-            {focusMode ? <Minimize2 size={17} /> : <Maximize2 size={17} />}
-          </button>
-          <button
-            className="icon-button reset"
-            title={t("Reset this language's solution")}
-            onClick={() => setResetConfirm(true)}
-            disabled={!session || running}
-          >
-            <RotateCcw size={17} />
-          </button>
+          <PreferencesControls
+            extra={(close) => (
+              <>
+                <label className="settings-toggle">
+                  <span>
+                    {t("Practice timer")}
+                    <small>{t("Show a pausable timer in the toolbar.")}</small>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={showTimer}
+                    onChange={(e) => {
+                      setShowTimer(e.target.checked);
+                      if (!e.target.checked) setTimer(false);
+                    }}
+                  />
+                </label>
+                <div className="settings-actions">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      close();
+                      setLibrary(true);
+                    }}
+                  >
+                    <LibraryBig size={14} />
+                    {t("Exercise library")}
+                  </button>
+                  <a
+                    href="/"
+                    onClick={(event) => {
+                      close();
+                      followLink(event);
+                    }}
+                  >
+                    <MapIcon size={14} />
+                    {t("Practice roadmap")}
+                  </a>
+                  <button
+                    type="button"
+                    className="danger"
+                    disabled={!session || running}
+                    onClick={() => {
+                      close();
+                      setResetConfirm(true);
+                    }}
+                  >
+                    <RotateCcw size={14} />
+                    {t("Reset this language's solution")}
+                  </button>
+                </div>
+              </>
+            )}
+          />
           <button
             className="primary run-button"
             onClick={() => void runTests()}
             disabled={!session || running}
+            title={t("Run tests") + " (⌘ ↵)"}
           >
             {running ? (
-              <LoaderCircle size={16} className="spin" />
+              <LoaderCircle size={15} className="spin" />
             ) : (
-              <Play size={14} fill="currentColor" />
+              <Play size={13} fill="currentColor" />
             )}
-            {running ? t("Queued or running…") : t("Run tests")}
+            <span className="run-label">
+              {running ? t("Queued or running…") : t("Run tests")}
+            </span>
             <kbd>⌘ ↵</kbd>
           </button>
         </div>
-      </div>
+      </header>
       <main
         ref={workspaceRef}
         style={
@@ -632,12 +643,16 @@ function Workspace({
             </div>
             <div className="requirements-scroll">
               <div className="exercise-meta">
-                <span className="topic-tag">{problem.tags[0]}</span>
-                <span>
+                <span className="topic-tag">{t(problem.category)}</span>
+                {problem.tags.slice(0, 2).map((tag) => (
+                  <span className="topic-tag subtle" key={tag}>
+                    {tag}
+                  </span>
+                ))}
+                <span className="exercise-duration">
                   <Clock3 size={12} /> {problem.duration} min
                 </span>
               </div>
-              <h2>{t("The challenge")}</h2>
               <p className="summary">{problem.summary}</p>
               <div className="progress-label">
                 <span>{t("YOUR PROGRESSION")}</span>
@@ -714,17 +729,6 @@ function Workspace({
                   </div>
                 </div>
               ))}
-              <div className="practice-note">
-                <Zap size={16} />
-                <div>
-                  <strong>{t("Build it one level at a time.")}</strong>
-                  <p>
-                    {t(
-                      "Pass the current level to unlock the next. Your code carries forward.",
-                    )}
-                  </p>
-                </div>
-              </div>
               <details className="exercise-details">
                 <summary>
                   {t("About this exercise")} <ChevronDown size={13} />
@@ -735,10 +739,6 @@ function Workspace({
                   )}
                 </p>
               </details>
-            </div>
-            <div className="requirements-footer">
-              <span className="dot" />
-              {t("Progress and drafts saved on this browser")}
             </div>
           </aside>
         )}
@@ -829,16 +829,6 @@ function Workspace({
                       )}
                     </div>
                   ))}
-                </div>
-                <div className="explorer-tip">
-                  <FlaskConical size={17} />
-                  <strong>{t("Make it your sandbox.")}</strong>
-                  <p>
-                    {t(
-                      "Add source files or your own test files with the + button. Run them alongside the level checks.",
-                    )}
-                  </p>
-                  <span>{t("Hidden checks run with your tests.")}</span>
                 </div>
               </aside>
             )}
@@ -1007,15 +997,6 @@ function Workspace({
                       <PanelBottomClose size={15} />
                     </button>
                     {run && <span>{(run.durationMs / 1000).toFixed(2)}s</span>}
-                    <span className="console-command">
-                      {language === "go"
-                        ? "go test -v"
-                        : language === "python"
-                          ? "python -m unittest -v"
-                          : language === "java"
-                            ? "javac + java"
-                            : "node --test"}
-                    </span>
                     <button
                       className="icon-button"
                       title={t("Clear output")}
@@ -1101,7 +1082,8 @@ function Workspace({
                         <strong>{t("Your next idea starts here.")}</strong>
                         <span>
                           {t(
-                            "Run the tests to see output, errors, and results.",
+                            "Runs {command} with the level checks, hidden checks, and your own test files.",
+                            { command: runnerCommand },
                           )}
                         </span>
                       </div>
@@ -1138,14 +1120,11 @@ function Workspace({
               {t(status)}
             </span>
             <span className="status-right">
-              <span>UTF-8</span>
               <span>
+                {activeFile?.readOnly && <LockKeyhole size={11} />}
                 {activeFile?.readOnly ? t("Read only") : t("Editable")}
               </span>
               <span>{languageNames[language]}</span>
-              <span>
-                <LockKeyhole size={11} /> {t("Local workspace")}
-              </span>
             </span>
           </footer>
         </section>
@@ -1199,7 +1178,7 @@ function Workspace({
                 />
               </div>
               <span>
-                {t("{count} exercises · 3 languages", {
+                {t("{count} exercises · 4 languages", {
                   count: problems.length,
                 })}
               </span>
@@ -1267,7 +1246,7 @@ function Workspace({
                 <Code2 size={14} />{" "}
                 {t("No AI autocomplete. Full language intelligence.")}
               </span>
-              <span>Go · Python · TypeScript</span>
+              <span>Go · Python · TypeScript · Java</span>
             </footer>
           </section>
         </div>

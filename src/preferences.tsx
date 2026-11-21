@@ -5,7 +5,16 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Minus, Moon, Plus, SlidersHorizontal, Sun, X } from "lucide-react";
+import {
+  ArrowUpRight,
+  Minus,
+  Monitor,
+  Moon,
+  Plus,
+  Settings2,
+  Sun,
+  X,
+} from "lucide-react";
 import { uiTranslations } from "./uiTranslations";
 import { roadmapTranslations } from "./roadmapTranslations";
 import {
@@ -44,10 +53,6 @@ const DEFAULT_EDITOR_FONT_SIZE = 14;
 const labels: Record<string, string> = {
   Language: "Idioma",
   "Browser default": "Padrão do navegador",
-  "Switch to light theme": "Ativar tema claro",
-  "Switch to dark theme": "Ativar tema escuro",
-  Preferences: "Preferências",
-  "Display & editor settings": "Aparência e editor",
   "Close settings": "Fechar configurações",
   "Editor theme": "Tema do editor",
   "Match app theme": "Seguir tema do app",
@@ -60,6 +65,14 @@ const labels: Record<string, string> = {
   Large: "Grande",
   "Extra large": "Extra grande",
   "Reset defaults": "Restaurar padrões",
+  Settings: "Configurações",
+  Appearance: "Aparência",
+  Theme: "Tema",
+  System: "Sistema",
+  Light: "Claro",
+  Dark: "Escuro",
+  Editor: "Editor",
+  Workspace: "Espaço de trabalho",
 };
 
 function storedChoice<T extends string>(
@@ -101,6 +114,7 @@ export function browserLocale(languages: readonly string[]): Locale {
 const PreferencesContext = createContext<{
   locale: Locale;
   localePreference: LocalePreference;
+  themePreference: ThemePreference;
   theme: "light" | "dark";
   editorThemePreference: EditorThemeId;
   resolvedEditorTheme: Exclude<EditorThemeId, "auto">;
@@ -270,6 +284,7 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
       value={{
         locale,
         localePreference,
+        themePreference,
         theme,
         editorThemePreference,
         resolvedEditorTheme,
@@ -297,11 +312,16 @@ export function usePreferences() {
   return value;
 }
 
-export function PreferencesControls() {
+export function PreferencesControls({
+  extra,
+}: {
+  /** Page-specific settings rendered as an extra section of the modal. */
+  extra?: (close: () => void) => ReactNode;
+} = {}) {
   const {
     t,
     localePreference,
-    theme,
+    themePreference,
     editorThemePreference,
     editorFontFamily,
     editorFontSize,
@@ -315,6 +335,7 @@ export function PreferencesControls() {
     resetDisplayPreferences,
   } = usePreferences();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const close = () => setSettingsOpen(false);
 
   useEffect(() => {
     if (!settingsOpen) return;
@@ -326,166 +347,197 @@ export function PreferencesControls() {
   }, [settingsOpen]);
 
   return (
-    <div
-      className="preferences-controls"
-      role="group"
-      aria-label={t("Preferences")}
-    >
-      <label>
-        {t("Language")}
-        <select
-          aria-label={t("Language")}
-          value={localePreference}
-          onChange={(event) =>
-            setLocalePreference(event.target.value as LocalePreference)
-          }
-        >
-          <option value="system">{t("Browser default")}</option>
-          <option value="en">English</option>
-          <option value="pt-BR">Português (Brasil)</option>
-        </select>
-      </label>
+    <>
       <button
         type="button"
-        className="theme-toggle"
-        aria-label={t("Display & editor settings")}
-        title={t("Display & editor settings")}
+        className="settings-trigger"
+        aria-label={t("Settings")}
+        title={t("Settings")}
+        aria-haspopup="dialog"
         aria-expanded={settingsOpen}
         onClick={() => setSettingsOpen(true)}
       >
-        <SlidersHorizontal size={16} aria-hidden="true" />
-      </button>
-      <button
-        type="button"
-        className="theme-toggle"
-        aria-label={t(
-          theme === "dark" ? "Switch to light theme" : "Switch to dark theme",
-        )}
-        title={t(
-          theme === "dark" ? "Switch to light theme" : "Switch to dark theme",
-        )}
-        aria-pressed={theme === "dark"}
-        onClick={() => setThemePreference(theme === "dark" ? "light" : "dark")}
-      >
-        {theme === "dark" ? (
-          <Sun size={17} aria-hidden="true" />
-        ) : (
-          <Moon size={17} aria-hidden="true" />
-        )}
+        <Settings2 size={16} aria-hidden="true" />
       </button>
       {settingsOpen && (
         <div
           className="modal-backdrop"
           onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setSettingsOpen(false);
+            if (event.target === event.currentTarget) close();
           }}
         >
           <section
             className="confirm-modal settings-modal"
             role="dialog"
             aria-modal="true"
-            aria-label={t("Display & editor settings")}
+            aria-label={t("Settings")}
           >
             <header className="settings-header">
-              <h2>{t("Display & editor settings")}</h2>
+              <h2>{t("Settings")}</h2>
               <button
                 type="button"
                 className="icon-button"
                 aria-label={t("Close settings")}
                 title={t("Close settings")}
-                onClick={() => setSettingsOpen(false)}
+                onClick={close}
               >
                 <X size={18} />
               </button>
             </header>
-            <div className="settings-fields">
-              <label className="settings-field">
-                <span>{t("Editor theme")}</span>
-                <select
-                  aria-label={t("Editor theme")}
-                  value={editorThemePreference}
-                  onChange={(event) =>
-                    setEditorThemePreference(
-                      event.target.value as EditorThemeId,
-                    )
-                  }
-                >
-                  <option value="auto">{t("Match app theme")}</option>
-                  {editorThemeOptions.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="settings-field">
-                <span>{t("Editor font")}</span>
-                <select
-                  aria-label={t("Editor font")}
-                  value={editorFontFamily}
-                  onChange={(event) =>
-                    setEditorFontFamily(event.target.value as EditorFontId)
-                  }
-                >
-                  {editorFontOptions.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <div className="settings-field">
-                <span>{t("Editor font size")}</span>
-                <div className="font-size-stepper">
-                  <button
-                    type="button"
-                    className="secondary"
-                    aria-label={t("Decrease editor font size")}
-                    disabled={editorFontSize <= MIN_EDITOR_FONT_SIZE}
-                    onClick={() => setEditorFontSize(editorFontSize - 1)}
+            <div className="settings-body">
+              {extra && (
+                <fieldset className="settings-section">
+                  <legend>{t("Workspace")}</legend>
+                  {extra(close)}
+                </fieldset>
+              )}
+              <fieldset className="settings-section">
+                <legend>{t("Appearance")}</legend>
+                <div className="settings-field">
+                  <span>{t("Theme")}</span>
+                  <div
+                    className="segmented-control"
+                    role="group"
+                    aria-label={t("Theme")}
                   >
-                    <Minus size={14} />
-                  </button>
-                  <output aria-live="polite">{editorFontSize}px</output>
-                  <button
-                    type="button"
-                    className="secondary"
-                    aria-label={t("Increase editor font size")}
-                    disabled={editorFontSize >= MAX_EDITOR_FONT_SIZE}
-                    onClick={() => setEditorFontSize(editorFontSize + 1)}
-                  >
-                    <Plus size={14} />
-                  </button>
+                    {(
+                      [
+                        ["system", "System", Monitor],
+                        ["light", "Light", Sun],
+                        ["dark", "Dark", Moon],
+                      ] as const
+                    ).map(([id, label, Icon]) => (
+                      <button
+                        type="button"
+                        key={id}
+                        className={themePreference === id ? "selected" : ""}
+                        aria-pressed={themePreference === id}
+                        onClick={() => setThemePreference(id)}
+                      >
+                        <Icon size={13} aria-hidden="true" />
+                        {t(label)}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-              <div className="settings-field">
-                <span>{t("Interface text")}</span>
-                <div
-                  className="segmented-control"
-                  role="group"
-                  aria-label={t("Interface text")}
-                >
-                  {(
-                    [
-                      ["default", "Default"],
-                      ["large", "Large"],
-                      ["xlarge", "Extra large"],
-                    ] as const
-                  ).map(([id, label]) => (
-                    <button
-                      type="button"
-                      key={id}
-                      className={textSize === id ? "selected" : ""}
-                      aria-pressed={textSize === id}
-                      onClick={() => setTextSize(id)}
+                <label className="settings-field">
+                  <span>{t("Language")}</span>
+                  <select
+                    aria-label={t("Language")}
+                    value={localePreference}
+                    onChange={(event) =>
+                      setLocalePreference(event.target.value as LocalePreference)
+                    }
+                  >
+                    <option value="system">{t("Browser default")}</option>
+                    <option value="en">English</option>
+                    <option value="pt-BR">Português (Brasil)</option>
+                  </select>
+                </label>
+                <div className="settings-field">
+                  <span>{t("Interface text")}</span>
+                  <div
+                    className="segmented-control"
+                    role="group"
+                    aria-label={t("Interface text")}
+                  >
+                    {(
+                      [
+                        ["default", "Default"],
+                        ["large", "Large"],
+                        ["xlarge", "Extra large"],
+                      ] as const
+                    ).map(([id, label]) => (
+                      <button
+                        type="button"
+                        key={id}
+                        className={textSize === id ? "selected" : ""}
+                        aria-pressed={textSize === id}
+                        onClick={() => setTextSize(id)}
+                      >
+                        {t(label)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </fieldset>
+              <fieldset className="settings-section">
+                <legend>{t("Editor")}</legend>
+                <label className="settings-field">
+                  <span>{t("Editor theme")}</span>
+                  <select
+                    aria-label={t("Editor theme")}
+                    value={editorThemePreference}
+                    onChange={(event) =>
+                      setEditorThemePreference(
+                        event.target.value as EditorThemeId,
+                      )
+                    }
+                  >
+                    <option value="auto">{t("Match app theme")}</option>
+                    {editorThemeOptions.map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div className="settings-row">
+                  <label className="settings-field">
+                    <span>{t("Editor font")}</span>
+                    <select
+                      aria-label={t("Editor font")}
+                      value={editorFontFamily}
+                      onChange={(event) =>
+                        setEditorFontFamily(event.target.value as EditorFontId)
+                      }
                     >
-                      {t(label)}
-                    </button>
-                  ))}
+                      {editorFontOptions.map((option) => (
+                        <option key={option.id} value={option.id}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <div className="settings-field">
+                    <span>{t("Editor font size")}</span>
+                    <div className="font-size-stepper">
+                      <button
+                        type="button"
+                        className="secondary"
+                        aria-label={t("Decrease editor font size")}
+                        disabled={editorFontSize <= MIN_EDITOR_FONT_SIZE}
+                        onClick={() => setEditorFontSize(editorFontSize - 1)}
+                      >
+                        <Minus size={14} />
+                      </button>
+                      <output aria-live="polite">{editorFontSize}px</output>
+                      <button
+                        type="button"
+                        className="secondary"
+                        aria-label={t("Increase editor font size")}
+                        disabled={editorFontSize >= MAX_EDITOR_FONT_SIZE}
+                        onClick={() => setEditorFontSize(editorFontSize + 1)}
+                      >
+                        <Plus size={14} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              </fieldset>
             </div>
-            <div className="settings-footer">
+            <footer className="settings-footer">
+              <a
+                className="settings-github"
+                href="https://github.com/lutefd/lld-prac"
+                target="_blank"
+                rel="noreferrer"
+              >
+                GitHub <ArrowUpRight size={13} />
+              </a>
+              <span className="settings-tagline">
+                {t("No AI. Just you and the code.")}
+              </span>
               <button
                 type="button"
                 className="secondary"
@@ -493,10 +545,10 @@ export function PreferencesControls() {
               >
                 {t("Reset defaults")}
               </button>
-            </div>
+            </footer>
           </section>
         </div>
       )}
-    </div>
+    </>
   );
 }

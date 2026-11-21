@@ -12,6 +12,7 @@ const types: Record<string, string> = {
 const returns: Record<string, [string, string]> = {
   b: ["boolean", "false"],
   n: ["int", "0"],
+  s: ["String", '""'],
   pair: ["Pair<String>", 'new Pair<>("", false)'],
   boolpair: ["Pair<Boolean>", "new Pair<>(false, false)"],
   money: ["Pair<Integer>", "new Pair<>(0, false)"],

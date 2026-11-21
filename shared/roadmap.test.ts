@@ -17,7 +17,7 @@ test("roadmap covers every exercise exactly once and places bridges before advan
   const easyIds = problems
     .filter((p) => p.difficulty === "Easy")
     .map((p) => p.id);
-  assert.equal(easyIds.length, 11, "provide a substantial beginner ramp");
+  assert.equal(easyIds.length, 13, "provide a substantial beginner ramp");
   assert.deepEqual(ids.slice(0, easyIds.length).sort(), easyIds.sort());
   assert.ok(ids.indexOf("vending-machine") < ids.indexOf("account-transfers"));
   assert.ok(

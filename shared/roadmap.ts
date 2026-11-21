@@ -52,6 +52,14 @@ export const roadmap = [
         "Resolve feature defaults and isolated overrides for individual users.",
       ],
       [
+        "tic-tac-toe",
+        "Validate turns on a board and detect winners before adding undo.",
+      ],
+      [
+        "url-shortener",
+        "Mint deterministic codes and resolve aliases with simple counters.",
+      ],
+      [
         "parking-lot",
         "Combine capacity and identity in a small real-world system.",
       ],
@@ -82,6 +90,14 @@ export const roadmap = [
         "support-ticket-router",
         "Route support work while respecting agent capacity and ticket state.",
       ],
+      [
+        "snakes-and-ladders",
+        "Advance players with supplied dice while applying portal and finish rules.",
+      ],
+      [
+        "expense-splitter",
+        "Split integer cents fairly and suggest a deterministic settle-up.",
+      ],
       ["library-lending", "Coordinate members, copies, and borrowing rules."],
     ],
   },
@@ -107,6 +123,14 @@ export const roadmap = [
         "parcel-locker",
         "Apply allocation and lifecycle rules to package pickup.",
       ],
+      [
+        "leaderboard",
+        "Rank scores with shared ties, top-K queries, and removals.",
+      ],
+      [
+        "text-editor-undo",
+        "Maintain a cursor buffer while undoing and redoing edits.",
+      ],
     ],
   },
   {
@@ -127,6 +151,10 @@ export const roadmap = [
         "Separate subscriptions and per-subscriber message delivery queues.",
       ],
       ["lru-cache", "Maintain recency alongside values and capacity."],
+      [
+        "circuit-breaker",
+        "Gate calls through closed, open, and half-open logical states.",
+      ],
     ],
   },
   {
@@ -147,6 +175,10 @@ export const roadmap = [
         "Introduce explicit time and test exact window boundaries.",
       ],
       [
+        "lfu-cache",
+        "Evict by frequency with least-recently-used tie-breaks on access order.",
+      ],
+      [
         "auction-house",
         "Protect bidding and closing rules across independent timed auctions.",
       ],
@@ -161,6 +193,10 @@ export const roadmap = [
       [
         "seat-booking",
         "Keep group reservations atomic while allocating scarce seats.",
+      ],
+      [
+        "elevator-controller",
+        "Simulate elevator targets with Step ticks across one or more cars.",
       ],
       [
         "delayed-job-queue",

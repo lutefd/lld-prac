@@ -1,60 +1,4 @@
-.preferences-controls {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-.preferences-controls label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--muted);
-  font-size: 12px;
-}
-.preferences-controls select {
-  color: inherit;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 6px;
-  max-width: 160px;
-}
-.roadmap-nav {
-  gap: 16px;
-  flex-wrap: wrap;
-}
-.app-shell .app-header {
-  gap: 14px;
-}
-@media (max-width: 1450px) {
-  .app-header .distraction-free {
-    display: none;
-  }
-}
-@media (max-width: 1000px) {
-  .app-shell .app-header {
-    height: auto;
-    min-height: 65px;
-    padding: 12px;
-    flex-wrap: wrap;
-  }
-  .app-header .breadcrumb,
-  .app-header .header-divider {
-    display: none;
-  }
-  .preferences-controls {
-    gap: 8px;
-  }
-}
-
-@media (max-width: 1250px) {
-  .app-header .breadcrumb,
-  .app-header .header-divider {
-    display: none;
-  }
-}
-
-.preferences-controls .theme-toggle {
+.settings-trigger {
   display: grid;
   place-items: center;
   width: 32px;
@@ -65,13 +9,22 @@
   color: var(--muted);
   flex-shrink: 0;
 }
-.preferences-controls .theme-toggle:hover {
+.settings-trigger:hover:not(:disabled),
+.settings-trigger[aria-expanded="true"] {
   color: var(--orange);
   border-color: var(--orange);
 }
+.roadmap-nav {
+  gap: 16px;
+  flex-wrap: wrap;
+}
 .settings-modal {
-  width: min(440px, 100%);
-  max-width: 440px;
+  width: min(480px, 100%);
+  max-width: 480px;
+  max-height: calc(100dvh - 40px);
+  display: flex;
+  flex-direction: column;
+  padding: 24px 26px 20px;
 }
 .settings-header {
   display: flex;
@@ -85,10 +38,125 @@
   font-size: 18px;
   font-weight: 550;
 }
-.settings-fields {
+.settings-body {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
+  overflow: auto;
+  margin: 0 -6px;
+  padding: 0 6px 4px;
+  scrollbar-width: thin;
+}
+.settings-section {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+.settings-section + .settings-section {
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+}
+.settings-section legend {
+  float: left;
+  width: 100%;
+  padding: 0;
+  margin-bottom: 2px;
+  font-size: 11px;
+  letter-spacing: 0.9px;
+  text-transform: uppercase;
+  color: var(--orange);
+  font-weight: 600;
+}
+.settings-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+}
+.settings-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  font-size: 13px;
+  color: inherit;
+  cursor: pointer;
+}
+.settings-toggle small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.settings-toggle input {
+  appearance: none;
+  flex-shrink: 0;
+  width: 34px;
+  height: 20px;
+  border-radius: 10px;
+  background: var(--line);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.15s;
+  margin: 0;
+}
+.settings-toggle input::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.15s;
+}
+.settings-toggle input:checked {
+  background: var(--orange);
+}
+.settings-toggle input:checked::after {
+  transform: translateX(14px);
+}
+.settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.settings-actions > :is(a, button) {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  padding: 8px 11px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: inherit;
+}
+.settings-actions > .danger:hover:not(:disabled) {
+  color: #e6a090;
+  border-color: #6b3e38;
+}
+.settings-shortcuts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 14px;
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.settings-shortcuts dt kbd {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+.settings-shortcuts dd {
+  margin: 0;
 }
 .settings-field {
   display: flex;
@@ -135,6 +203,10 @@
   gap: 6px;
 }
 .segmented-control button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   padding: 8px 10px;
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -149,8 +221,34 @@
 }
 .settings-footer {
   display: flex;
-  justify-content: flex-end;
-  margin-top: 22px;
+  align-items: center;
+  gap: 14px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--muted);
+}
+.settings-footer .secondary {
+  margin-left: auto;
+  padding: 8px 12px;
+  font-size: 12.5px;
+}
+.settings-github {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.settings-github:hover {
+  color: var(--orange);
+}
+@media (max-width: 480px) {
+  .settings-row {
+    grid-template-columns: 1fr;
+  }
+  .settings-tagline {
+    display: none;
+  }
 }
 :root[data-theme="light"] .settings-field select {
   color: #29333f;
@@ -167,4 +265,15 @@
   color: #884119;
   background: #fff0e5;
   border-color: #d5ab8e;
+}
+
+:root[data-theme="light"] .settings-toggle input {
+  background: #cfd6de;
+}
+:root[data-theme="light"] .settings-toggle input:checked {
+  background: var(--orange);
+}
+:root[data-theme="light"] .settings-actions > .danger:hover:not(:disabled) {
+  color: #a13f37;
+  border-color: #e4b7b0;
 }

@@ -9,7 +9,7 @@ test("Java opens from the roadmap, preserves drafts, and keeps progress scoped t
   });
   await page.getByLabel("Roadmap language").selectOption("java");
   await expect(page.locator(".roadmap-controls")).toContainText(
-    "1 of 35 exercises completed",
+    "1 of 44 exercises completed",
   );
   await page.getByRole("link", { name: "Continue the path" }).click();
   await expect(page).toHaveURL(/\/practice\/fifo-queue$/);

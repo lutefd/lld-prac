@@ -27,11 +27,11 @@ Open [127.0.0.1:4173](http://127.0.0.1:4173). Both modes also start the API on p
 
 ## Practice
 
-Use the **Language** selector and sun/moon theme toggle in the roadmap or workspace header to customize the app. Language follows your browser preference (Portuguese uses pt-BR; other languages fall back to English), with explicit English and Português (Brasil) options. Theme follows the system appearance by default, until you choose light or dark with the toggle. Both choices are saved in this browser. Exercise descriptions, requirements, roadmap, and interface are localized; source code, API names, examples, and test output stay in English.
+Open **Settings** (gear) on the roadmap or practice toolbar to change theme, language, editor theme/font/size, and interface text size. Language follows your browser preference (Portuguese uses pt-BR; other languages fall back to English), with explicit English and Português (Brasil) options. Theme follows the system appearance by default, until you choose light or dark. Choices are saved in this browser. Exercise descriptions, requirements, roadmap, and interface are localized; source code, API names, examples, and test output stay in English.
 
-- The app opens on the **Practice roadmap**, with a recommended order, language-specific progress, and a shortcut to the next unfinished exercise. Start with the stack and queue, use vending machine as the medium bridge, then dependency planner as the hard bridge. Return to the roadmap at `/` from any exercise.
+- The app opens on the **Practice roadmap**, with a recommended order, language-specific progress, and a shortcut to the next unfinished exercise. Start with the stack and queue, use vending machine as the medium bridge, then dependency planner as the hard bridge. Return to the roadmap at `/` from any exercise (or the map shortcut in the practice toolbar).
 - Each exercise has a bookmarkable URL, such as `/practice/ride-dispatch`. Roadmap and library links can be copied or opened in new tabs. Reloading or using browser back/forward preserves the exercise selected by the URL; language, drafts, and progress stay saved locally.
-- Open the exercise library from the **workbench.** logo or back arrow. Filter by ride-hailing, banking, fundamentals, commerce, collaboration, or infrastructure.
+- Open the exercise library from the brand button in the practice toolbar or from Settings. Filter by ride-hailing, banking, fundamentals, commerce, collaboration, infrastructure, or games.
 - Implement the current level in `implementation.go`, `implementation.py`, `implementation.ts`, or `Implementation.java`.
 - Use normal language completions, hover information, signatures, definitions, and diagnostics from gopls, Pyright, the TypeScript language server, or Eclipse JDT LS (`jdtls`, installed separately for Java). Inline AI suggestions are disabled.
 - Use **+ New file** in Explorer to create additional `.go`, `.py`, `.ts`, or `.java` source files, including paths such as `helpers/pricing.go`. Switch files in Explorer; extra files are saved with the selected exercise and language.
@@ -39,9 +39,7 @@ Use the **Language** selector and sun/moon theme toggle in the roadmap or worksp
 - You can switch programming languages while a run is queued or executing. Your draft is preserved for each language; the previous browser request is abandoned and cannot update the new workspace. An already executing server-side test finishes within its time limit.
 - Click **Run tests** or press **⌘ Enter / Ctrl Enter**. The console shows the actual runner output, including your test logs, errors, assertion failures, and hidden check results.
 - Passing the cumulative checks unlocks the next level. Later-level test files are excluded from the execution snapshot until their level is selected.
-- Drag the dividers to resize requirements, the file explorer, and the console. Each pane can be collapsed and restored; sizes and visibility are remembered in this browser. Focus a divider and use arrow keys to resize (Shift for larger steps), or double-click it to reset the size. Run tests automatically reopens a collapsed console. The practice timer is optional and can be paused.
-
-Use the expand icon next to the language selector to enter **focus mode**. It hides the branding bar and shrinks the toolbar while keeping the language selector and Run tests available. The same button exits focus mode; this preference is remembered too.
+- Drag the dividers to resize requirements, the file explorer, and the console. Each pane can be collapsed and restored; sizes and visibility are remembered in this browser. Focus a divider and use arrow keys to resize (Shift for larger steps), or double-click it to reset the size. Run tests automatically reopens a collapsed console. The practice timer can be hidden or paused from Settings.
 
 Drafts and unlocked levels are saved in browser local storage separately for each exercise and language. Runtime workspace files live under ignored `.practice/workspaces/`. Reset affects only the selected exercise and language. Browser data clearing removes drafts and progress.
 
@@ -49,18 +47,19 @@ The prompts use Go-style contracts as a common specification. Python, TypeScript
 
 ## Exercises
 
-All 35 exercises have three progressive levels and starters/tests for all four languages, including visible examples, hidden edge checks, and an editable sandbox. Eleven easy exercises provide a gradual ramp before the medium and hard bridges on the roadmap.
+All 44 exercises have three progressive levels and starters/tests for all four languages, including visible examples, hidden edge checks, and an editable sandbox. Thirteen easy exercises provide a gradual ramp before the medium and hard bridges on the roadmap.
 
-| Domain         | Exercises                                                                                                                                                                                                                              |
-| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Ride-hailing   | Ride dispatch, Fare calculator, Trip lifecycle, Driver availability, Parking lot, Multi-level parking garage, Seat booking, Parcel locker                                                                                              |
-| Banking        | Wallet ledger, Account transfers, Card limits, Transaction history                                                                                                                                                                     |
-| Fundamentals   | Bounded stack, FIFO queue, Score tracker, Contact directory, Shopping cart, Thermostat, Vending machine, Library lending, In-memory filesystem, Inventory reservations, LRU cache, Rate limiter, Dependency planner, Delayed job queue |
-| Commerce       | Coupon registry, Restaurant orders, Auction house                                                                                                                                                                                      |
-| Collaboration  | Task checklist, Support ticket router, Meeting room scheduler                                                                                                                                                                          |
-| Infrastructure | Feature flag registry, Pub/sub broker, TTL key-value store                                                                                                                                                                             |
+| Domain         | Exercises                                                                                                                                                                                                                                                              |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Ride-hailing   | Ride dispatch, Fare calculator, Trip lifecycle, Driver availability, Parking lot, Multi-level parking garage, Seat booking, Parcel locker                                                                                                                              |
+| Banking        | Wallet ledger, Account transfers, Card limits, Transaction history, Expense splitter                                                                                                                                                                                   |
+| Fundamentals   | Bounded stack, FIFO queue, Score tracker, Contact directory, Shopping cart, Thermostat, Vending machine, Library lending, In-memory filesystem, Inventory reservations, LRU cache, Rate limiter, Dependency planner, Delayed job queue, Text editor with undo, LFU cache |
+| Commerce       | Coupon registry, Restaurant orders, Auction house                                                                                                                                                                                                                      |
+| Collaboration  | Task checklist, Support ticket router, Meeting room scheduler                                                                                                                                                                                                          |
+| Infrastructure | Feature flag registry, Pub/sub broker, TTL key-value store, URL shortener, Circuit breaker, Elevator controller                                                                                                                                                        |
+| Games          | Tic-tac-toe, Snakes and ladders, Competitive leaderboard                                                                                                                                                                                                               |
 
-These are original practice scenarios spanning ride-hailing, banking, commerce, collaboration, infrastructure, and core data structures. They cover common interview design patterns and are not official questions from any company.
+These are original practice scenarios spanning ride-hailing, banking, commerce, collaboration, infrastructure, games, and core data structures. They cover common interview design patterns and are not official questions from any company.
 
 ## Test execution
 

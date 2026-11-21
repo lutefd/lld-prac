@@ -7,7 +7,7 @@ test("roadmap orders the full catalog, restores progress, and opens the selected
   await expect(
     page.getByRole("heading", { name: "Small steps. Stronger designs." }),
   ).toBeVisible();
-  await expect(page.locator(".roadmap-exercises li")).toHaveCount(35);
+  await expect(page.locator(".roadmap-exercises li")).toHaveCount(44);
   await expect(page.locator(".roadmap-exercises li").first()).toContainText(
     "Bounded stack",
   );
@@ -16,7 +16,7 @@ test("roadmap orders the full catalog, restores progress, and opens the selected
   });
   await page.getByLabel("Roadmap language").selectOption("python");
   await expect(page.locator(".roadmap-controls")).toContainText(
-    "1 of 35 exercises completed",
+    "1 of 44 exercises completed",
   );
   await expect(page.locator(".roadmap-exercises li").first()).toContainText(
     "3/3 levels",

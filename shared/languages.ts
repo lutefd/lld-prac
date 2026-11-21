@@ -9,6 +9,18 @@ import {
   infrastructureTests,
   infrastructureHidden,
 } from "./infrastructure.ts";
+import { gamesApi, gamesTests, gamesHidden } from "./games.ts";
+import { expenseApi, expenseTests, expenseHidden } from "./expense-splitter.ts";
+import {
+  moreFundamentalApi,
+  moreFundamentalTests,
+  moreFundamentalHidden,
+} from "./more-fundamentals.ts";
+import {
+  moreInfrastructureApi,
+  moreInfrastructureTests,
+  moreInfrastructureHidden,
+} from "./more-infrastructure.ts";
 import type { PracticeProblem, PracticeFile } from "./problems.ts";
 import type { Command } from "./case-support.ts";
 import { javaFiles } from "./java.ts";
@@ -904,6 +916,10 @@ Object.assign(
   commerceApi,
   collaborationApi,
   infrastructureApi,
+  gamesApi,
+  expenseApi,
+  moreFundamentalApi,
+  moreInfrastructureApi,
 );
 Object.assign(
   tests,
@@ -915,6 +931,10 @@ Object.assign(
   commerceTests,
   collaborationTests,
   infrastructureTests,
+  gamesTests,
+  expenseTests,
+  moreFundamentalTests,
+  moreInfrastructureTests,
 );
 Object.assign(
   hidden,
@@ -926,6 +946,10 @@ Object.assign(
   commerceHidden,
   collaborationHidden,
   infrastructureHidden,
+  gamesHidden,
+  expenseHidden,
+  moreFundamentalHidden,
+  moreInfrastructureHidden,
 );
 
 const pyType: Record<string, string> = {
@@ -945,6 +969,7 @@ const tsType: Record<string, string> = {
 const pyReturn: Record<string, [string, string]> = {
   b: ["bool", "False"],
   n: ["int", "0"],
+  s: ["str", '""'],
   pair: ["tuple[str, bool]", '("", False)'],
   boolpair: ["tuple[bool, bool]", "(False, False)"],
   money: ["tuple[int, bool]", "(0, False)"],
@@ -955,6 +980,7 @@ const pyReturn: Record<string, [string, string]> = {
 const tsReturn: Record<string, [string, string]> = {
   b: ["boolean", "false"],
   n: ["number", "0"],
+  s: ["string", '""'],
   pair: ["[string, boolean]", '["", false]'],
   boolpair: ["[boolean, boolean]", "[false, false]"],
   money: ["[number, boolean]", "[0, false]"],

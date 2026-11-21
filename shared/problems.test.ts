@@ -7,8 +7,8 @@ import { spawnSync } from "node:child_process";
 import { problems } from "./problems.ts";
 
 test("catalog has unique original problems and three progressive levels", () => {
-  assert.equal(problems.length, 35);
-  assert.equal(new Set(problems.map((p) => p.id)).size, 35);
+  assert.equal(problems.length, 44);
+  assert.equal(new Set(problems.map((p) => p.id)).size, 44);
   for (const p of problems) {
     assert.equal(p.levels.length, 3, p.id);
     assert.ok(
@@ -30,15 +30,18 @@ test("catalog has unique original problems and three progressive levels", () => 
 });
 
 test("new themes each cover easy, medium, and hard practice", () => {
-  for (const category of ["Commerce", "Collaboration", "Infrastructure"]) {
-    assert.deepEqual(
-      problems
-        .filter((p) => p.category === category)
-        .map((p) => p.difficulty)
-        .sort(),
-      ["Easy", "Hard", "Medium"],
-      category,
+  for (const category of [
+    "Commerce",
+    "Collaboration",
+    "Infrastructure",
+    "Games",
+  ]) {
+    const difficulties = new Set(
+      problems.filter((p) => p.category === category).map((p) => p.difficulty),
     );
+    assert.ok(difficulties.has("Easy"), category);
+    assert.ok(difficulties.has("Medium"), category);
+    if (category !== "Games") assert.ok(difficulties.has("Hard"), category);
   }
 });
 

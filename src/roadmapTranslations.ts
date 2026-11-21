@@ -1,4 +1,5 @@
 export const roadmapTranslations: Record<string, string> = {
+  Games: "Jogos",
   "Model promotion identity, validation, and explicit activation rules.":
     "Modele a identidade de promoções, validações e regras explícitas de ativação.",
   "Practice task identity, completion state, and sorted snapshots.":
@@ -17,6 +18,24 @@ export const roadmapTranslations: Record<string, string> = {
     "Aloque salas por intervalo e reagende sem alterações parciais.",
   "Protect bidding and closing rules across independent timed auctions.":
     "Proteja regras de lances e encerramento em leilões independentes com prazo.",
+  "Validate turns on a board and detect winners before adding undo.":
+    "Valide turnos em um tabuleiro e detecte vencedores antes de adicionar desfazer.",
+  "Mint deterministic codes and resolve aliases with simple counters.":
+    "Gere códigos determinísticos e resolva aliases com contadores simples.",
+  "Advance players with supplied dice while applying portal and finish rules.":
+    "Avance jogadores com dados fornecidos aplicando portais e a regra de chegada.",
+  "Split integer cents fairly and suggest a deterministic settle-up.":
+    "Divida centavos inteiros de forma justa e sugira um acerto determinístico.",
+  "Rank scores with shared ties, top-K queries, and removals.":
+    "Classifique pontuações com empates compartilhados, consultas top-K e remoções.",
+  "Maintain a cursor buffer while undoing and redoing edits.":
+    "Mantenha um buffer com cursor ao desfazer e refazer edições.",
+  "Gate calls through closed, open, and half-open logical states.":
+    "Controle chamadas pelos estados lógicos fechado, aberto e meio-aberto.",
+  "Evict by frequency with least-recently-used tie-breaks on access order.":
+    "Expulse por frequência com desempate pelo menos recentemente usado.",
+  "Simulate elevator targets with Step ticks across one or more cars.":
+    "Simule alvos de elevadores com ticks de Step em um ou mais carros.",
 
   "Code editor": "Editor de código",
   "Drag to resize · Arrow keys to adjust · Double-click to reset":

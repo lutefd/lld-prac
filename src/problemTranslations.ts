@@ -1,6 +1,10 @@
 import { commerceTranslations } from "./commerceTranslations.ts";
 import { collaborationTranslations } from "./collaborationTranslations.ts";
 import { infrastructureTranslations } from "./infrastructureTranslations.ts";
+import { gamesTranslations } from "./gamesTranslations.ts";
+import { expenseTranslations } from "./expenseTranslations.ts";
+import { moreFundamentalsTranslations } from "./moreFundamentalsTranslations.ts";
+import { moreInfrastructureTranslations } from "./moreInfrastructureTranslations.ts";
 type LocalizedContent = {
   title: string;
   summary: string;
@@ -16,6 +20,10 @@ export const problemTranslations: Record<string, LocalizedContent> = {
   ...commerceTranslations,
   ...collaborationTranslations,
   ...infrastructureTranslations,
+  ...gamesTranslations,
+  ...expenseTranslations,
+  ...moreFundamentalsTranslations,
+  ...moreInfrastructureTranslations,
   "ride-dispatch": {
     title: "Distribuição de corridas",
     summary:

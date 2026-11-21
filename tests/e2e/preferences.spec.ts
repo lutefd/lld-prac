@@ -1,5 +1,10 @@
 import { test, expect } from "@playwright/test";
 
+async function openSettings(page: import("@playwright/test").Page, label = "Settings") {
+  await page.getByRole("button", { name: label, exact: true }).click();
+  return page.getByRole("dialog", { name: label, exact: true });
+}
+
 test("browser locale and system theme are defaults; overrides persist without replacing the workspace", async ({
   browser,
 }) => {
@@ -14,7 +19,7 @@ test("browser locale and system theme are defaults; overrides persist without re
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
     "Pequenos passos. Projetos melhores.",
   );
-  await expect(page.locator(".roadmap-exercises li")).toHaveCount(35);
+  await expect(page.locator(".roadmap-exercises li")).toHaveCount(44);
   await expect(page.locator(".roadmap-exercises li").first()).not.toContainText(
     "Bounded stack",
   );
@@ -23,12 +28,14 @@ test("browser locale and system theme are defaults; overrides persist without re
     fullPage: true,
     animations: "disabled",
   });
-  await page.getByRole("button", { name: "Ativar tema escuro" }).click();
+  let dialog = await openSettings(page, "Configurações");
+  await dialog.getByRole("button", { name: "Escuro", exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-  await page.getByLabel("Idioma", { exact: true }).selectOption("en");
+  await dialog.getByLabel("Idioma", { exact: true }).selectOption("en");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
     "Small steps. Stronger designs.",
   );
+  await dialog.getByRole("button", { name: "Close settings", exact: true }).click();
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
@@ -47,7 +54,8 @@ test("browser locale and system theme are defaults; overrides persist without re
   await page.locator(".monaco-editor").click();
   await page.keyboard.press("ControlOrMeta+a");
   await page.keyboard.insertText(draft);
-  await page.getByLabel("Language", { exact: true }).selectOption("pt-BR");
+  dialog = await openSettings(page);
+  await dialog.getByLabel("Language", { exact: true }).selectOption("pt-BR");
   await expect(page.locator(".requirements-list")).toContainText(
     "NewStack(capacity int) *Stack começa vazia",
   );
@@ -59,18 +67,18 @@ test("browser locale and system theme are defaults; overrides persist without re
     fullPage: true,
     animations: "disabled",
   });
-  await page.getByRole("button", { name: "Ativar tema claro" }).click();
+  await dialog.getByRole("button", { name: "Claro", exact: true }).click();
   await expect(page.locator(".monaco-editor")).toHaveClass(/vs(\s|$)/);
+  await dialog
+    .getByRole("button", { name: "Fechar configurações", exact: true })
+    .click();
   await page.screenshot({
     path: "test-results/workspace-pt-light.png",
     fullPage: true,
     animations: "disabled",
   });
   await page.setViewportSize({ width: 375, height: 812 });
-  await expect(page.getByLabel("Idioma", { exact: true })).toBeInViewport();
-  await expect(
-    page.getByRole("button", { name: "Ativar tema escuro" }),
-  ).toBeInViewport();
+  await expect(page.getByRole("button", { name: "Configurações", exact: true })).toBeInViewport();
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth),
   ).toBeLessThanOrEqual(375);
@@ -100,12 +108,16 @@ test("system theme follows changes and unsupported browser languages fall back t
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.emulateMedia({ colorScheme: "light" });
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-  await page.getByRole("button", { name: "Switch to dark theme" }).click();
+  let dialog = await openSettings(page);
+  await dialog.getByRole("button", { name: "Dark", exact: true }).click();
+  await dialog.getByRole("button", { name: "Close settings", exact: true }).click();
   await page.emulateMedia({ colorScheme: "dark" });
   await page.emulateMedia({ colorScheme: "light" });
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-  await page.getByRole("button", { name: "Switch to light theme" }).click();
+  dialog = await openSettings(page);
+  await dialog.getByRole("button", { name: "Light", exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await dialog.getByRole("button", { name: "Close settings", exact: true }).click();
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await page.emulateMedia({ colorScheme: "dark" });
@@ -122,14 +134,7 @@ test("editor theme, font, font size, and interface text size can be configured a
 }) => {
   await page.goto("/practice/bounded-stack");
   await expect(page.locator(".monaco-editor")).toBeVisible();
-  await page
-    .getByRole("button", { name: "Display & editor settings", exact: true })
-    .click();
-  const dialog = page.getByRole("dialog", {
-    name: "Display & editor settings",
-    exact: true,
-  });
-  await expect(dialog).toBeVisible();
+  const dialog = await openSettings(page);
   await dialog.getByLabel("Editor theme", { exact: true }).selectOption("monokai");
   await dialog
     .getByLabel("Editor font", { exact: true })
@@ -149,14 +154,12 @@ test("editor theme, font, font size, and interface text size can be configured a
   await expect(dialog).not.toBeVisible();
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-text-size", "large");
-  await page
-    .getByRole("button", { name: "Display & editor settings", exact: true })
-    .click();
-  await expect(dialog.getByLabel("Editor theme", { exact: true })).toHaveValue(
+  const again = await openSettings(page);
+  await expect(again.getByLabel("Editor theme", { exact: true })).toHaveValue(
     "monokai",
   );
-  await expect(dialog.getByLabel("Editor font", { exact: true })).toHaveValue(
+  await expect(again.getByLabel("Editor font", { exact: true })).toHaveValue(
     "ibm-plex-mono",
   );
-  await expect(dialog.locator(".font-size-stepper output")).toHaveText("16px");
+  await expect(again.locator(".font-size-stepper output")).toHaveText("16px");
 });

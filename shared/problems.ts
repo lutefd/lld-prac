@@ -1,6 +1,10 @@
 import { commerceProblems } from "./commerce.ts";
 import { collaborationProblems } from "./collaboration.ts";
 import { infrastructureProblems } from "./infrastructure.ts";
+import { gamesProblems } from "./games.ts";
+import { expenseProblems } from "./expense-splitter.ts";
+import { moreFundamentalProblems } from "./more-fundamentals.ts";
+import { moreInfrastructureProblems } from "./more-infrastructure.ts";
 import { parkingProblems } from "./parking.ts";
 import { reservationProblems } from "./reservations.ts";
 import { fundamentalProblems } from "./fundamentals.ts";
@@ -28,7 +32,8 @@ export type PracticeProblem = {
     | "Fundamentals"
     | "Commerce"
     | "Collaboration"
-    | "Infrastructure";
+    | "Infrastructure"
+    | "Games";
   difficulty: "Easy" | "Medium" | "Hard";
   duration: number;
   summary: string;
@@ -711,4 +716,8 @@ problems.push(
   ...commerceProblems,
   ...collaborationProblems,
   ...infrastructureProblems,
+  ...gamesProblems,
+  ...expenseProblems,
+  ...moreFundamentalProblems,
+  ...moreInfrastructureProblems,
 );

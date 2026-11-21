@@ -63,7 +63,7 @@ func TestArbitraryName(t *testing.T) { t.Log("MY_EDGE_CASE_OUTPUT"); d:=NewDispa
   await expect(
     page.getByRole("dialog", { name: "Exercise library" }),
   ).toBeVisible();
-  await expect(page.locator(".library-tools")).toContainText("35 exercises");
+  await expect(page.locator(".library-tools")).toContainText("44 exercises");
   await page.getByLabel("Search exercises").fill("parking");
   await expect(page.locator(".exercise-card")).toHaveCount(2);
   await expect(page.locator(".exercise-grid")).toContainText(
