@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import * as monaco from "monaco-editor";
 import EditorWorker from "monaco-editor/editor/editor.worker?worker";
 import { GoLanguageService, type PracticeFile, type Session } from "./lsp";
+import { fontFamilyFor, registerEditorThemes } from "./editorThemes";
 
 // Bundle Monaco's worker with the application; no network-loaded editor or AI services.
 (globalThis as any).MonacoEnvironment = { getWorker: () => new EditorWorker() };
@@ -21,60 +22,7 @@ monaco.typescript.typescriptDefaults.setModeConfiguration({
   codeActions: false,
   signatureHelp: false,
 });
-monaco.editor.defineTheme("practice-dark", {
-  base: "vs-dark",
-  inherit: true,
-  rules: [
-    { token: "comment", foreground: "748178", fontStyle: "italic" },
-    { token: "keyword", foreground: "C6ADFA" },
-    { token: "string", foreground: "B5CE9A" },
-    { token: "number", foreground: "E9BD86" },
-    { token: "type.identifier", foreground: "8BC8C0" },
-  ],
-  colors: {
-    "editor.background": "#171a1f",
-    "editor.foreground": "#CDD2D9",
-    "editorLineNumber.foreground": "#525965",
-    "editorLineNumber.activeForeground": "#ACB6C3",
-    "editor.lineHighlightBackground": "#1D2128",
-    "editor.selectionBackground": "#334838",
-    "editorCursor.foreground": "#B9E787",
-    "editorIndentGuide.background1": "#272D34",
-    "editorWidget.background": "#20252C",
-    "editorSuggestWidget.background": "#20252C",
-    "editorSuggestWidget.border": "#343B44",
-    "editorSuggestWidget.selectedBackground": "#344434",
-  },
-});
-monaco.editor.defineTheme("practice-light", {
-  base: "vs",
-  inherit: true,
-  rules: [
-    { token: "comment", foreground: "647567", fontStyle: "italic" },
-    { token: "keyword", foreground: "7544A0" },
-    { token: "string", foreground: "427022" },
-    { token: "number", foreground: "986013" },
-    { token: "type.identifier", foreground: "21736D" },
-  ],
-  colors: {
-    "editor.background": "#FFFFFF",
-    "editor.foreground": "#29333F",
-    "editorLineNumber.foreground": "#8A95A1",
-    "editorLineNumber.activeForeground": "#445160",
-    "editor.lineHighlightBackground": "#F4F6F8",
-    "editor.selectionBackground": "#D5E6D5",
-    "editorCursor.foreground": "#39704A",
-    "editorIndentGuide.background1": "#E3E7EB",
-    "editorWidget.background": "#FFFFFF",
-    "editorSuggestWidget.background": "#FFFFFF",
-    "editorSuggestWidget.border": "#CDD4DC",
-    "editorSuggestWidget.selectedBackground": "#E5EFE4",
-  },
-});
-const editorTheme = () =>
-  document.documentElement.dataset.theme === "light"
-    ? "practice-light"
-    : "practice-dark";
+registerEditorThemes(monaco);
 
 type Props = {
   session: Session;
@@ -93,7 +41,8 @@ export default function Editor({
   onStatus,
   locked = false,
 }: Props) {
-  const { t } = usePreferences();
+  const { t, resolvedEditorTheme, editorFontSize, editorFontFamily } =
+    usePreferences();
   const container = useRef<HTMLDivElement>(null);
   const editor = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const languageService = useRef<GoLanguageService | null>(null);
@@ -107,6 +56,16 @@ export default function Editor({
   callbacks.current = { onChange, onStatus };
   const latestFiles = useRef(files);
   latestFiles.current = files;
+  const latestAppearance = useRef({
+    resolvedEditorTheme,
+    editorFontSize,
+    editorFontFamily,
+  });
+  latestAppearance.current = {
+    resolvedEditorTheme,
+    editorFontSize,
+    editorFontFamily,
+  };
 
   useEffect(() => {
     if (!container.current) return;
@@ -114,14 +73,19 @@ export default function Editor({
       callbacks.current.onStatus?.(status),
     );
     languageService.current = service;
+    const {
+      resolvedEditorTheme: initialTheme,
+      editorFontSize: initialFontSize,
+      editorFontFamily: initialFontFamily,
+    } = latestAppearance.current;
     const instance = monaco.editor.create(container.current, {
-      theme: editorTheme(),
+      theme: initialTheme,
       language: session.language || "go",
       automaticLayout: true,
-      fontFamily: '"SFMono-Regular", Consolas, "Liberation Mono", monospace',
-      fontSize: 13,
+      fontFamily: fontFamilyFor(initialFontFamily),
+      fontSize: initialFontSize,
       fontLigatures: true,
-      lineHeight: 23,
+      lineHeight: Math.round(initialFontSize * 1.7),
       padding: { top: 22, bottom: 22 },
       minimap: { enabled: false },
       scrollBeyondLastLine: false,
@@ -139,11 +103,8 @@ export default function Editor({
       contextmenu: true,
     });
     editor.current = instance;
-    const updateTheme = () => monaco.editor.setTheme(editorTheme());
-    window.addEventListener("workbench-theme-change", updateTheme);
     service.register();
     return () => {
-      window.removeEventListener("workbench-theme-change", updateTheme);
       service.dispose();
       listeners.current.forEach((listener) => listener.dispose());
       listeners.current.clear();
@@ -155,6 +116,18 @@ export default function Editor({
       languageService.current = null;
     };
   }, [session.sessionId]);
+
+  useEffect(() => {
+    monaco.editor.setTheme(resolvedEditorTheme);
+  }, [resolvedEditorTheme]);
+
+  useEffect(() => {
+    editor.current?.updateOptions({
+      fontSize: editorFontSize,
+      lineHeight: Math.round(editorFontSize * 1.7),
+      fontFamily: fontFamilyFor(editorFontFamily),
+    });
+  }, [editorFontSize, editorFontFamily]);
 
   // Reconcile models before selecting the active file, so newly created files
   // open immediately without resetting the editor or the language-server session.

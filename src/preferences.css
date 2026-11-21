@@ -69,3 +69,102 @@
   color: var(--orange);
   border-color: var(--orange);
 }
+.settings-modal {
+  width: min(440px, 100%);
+  max-width: 440px;
+}
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.settings-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 550;
+}
+.settings-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.settings-field > span {
+  font-weight: 500;
+}
+.settings-field select {
+  width: 100%;
+  max-width: none;
+  padding: 9px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: inherit;
+  font-size: 13px;
+}
+.font-size-stepper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.font-size-stepper button {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+}
+.font-size-stepper output {
+  min-width: 48px;
+  text-align: center;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 13px;
+  color: inherit;
+}
+.segmented-control {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.segmented-control button {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.segmented-control button.selected {
+  border-color: #966244;
+  background: #32291f;
+  color: #e6aa7e;
+}
+.settings-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 22px;
+}
+:root[data-theme="light"] .settings-field select {
+  color: #29333f;
+  background: #f3f5f7;
+}
+:root[data-theme="light"] .font-size-stepper output {
+  color: #25313f;
+}
+:root[data-theme="light"] .segmented-control button {
+  background: #f0f3f6;
+  color: #526172;
+}
+:root[data-theme="light"] .segmented-control button.selected {
+  color: #884119;
+  background: #fff0e5;
+  border-color: #d5ab8e;
+}

@@ -116,3 +116,47 @@ test("system theme follows changes and unsupported browser languages fall back t
   ).toBeLessThanOrEqual(375);
   await context.close();
 });
+
+test("editor theme, font, font size, and interface text size can be configured and persist", async ({
+  page,
+}) => {
+  await page.goto("/practice/bounded-stack");
+  await expect(page.locator(".monaco-editor")).toBeVisible();
+  await page
+    .getByRole("button", { name: "Display & editor settings", exact: true })
+    .click();
+  const dialog = page.getByRole("dialog", {
+    name: "Display & editor settings",
+    exact: true,
+  });
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel("Editor theme", { exact: true }).selectOption("monokai");
+  await dialog
+    .getByLabel("Editor font", { exact: true })
+    .selectOption("ibm-plex-mono");
+  await dialog
+    .getByRole("button", { name: "Increase editor font size", exact: true })
+    .click();
+  await dialog
+    .getByRole("button", { name: "Increase editor font size", exact: true })
+    .click();
+  await expect(dialog.locator(".font-size-stepper output")).toHaveText("16px");
+  await dialog.getByRole("button", { name: "Large", exact: true }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-text-size", "large");
+  await dialog
+    .getByRole("button", { name: "Close settings", exact: true })
+    .click();
+  await expect(dialog).not.toBeVisible();
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-text-size", "large");
+  await page
+    .getByRole("button", { name: "Display & editor settings", exact: true })
+    .click();
+  await expect(dialog.getByLabel("Editor theme", { exact: true })).toHaveValue(
+    "monokai",
+  );
+  await expect(dialog.getByLabel("Editor font", { exact: true })).toHaveValue(
+    "ibm-plex-mono",
+  );
+  await expect(dialog.locator(".font-size-stepper output")).toHaveText("16px");
+});

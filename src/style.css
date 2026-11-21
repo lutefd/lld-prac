@@ -2042,3 +2042,63 @@ h1 {
   :is(.requirements-scroll, .console-content, .exercise-grid) {
   scrollbar-color: #b6c1cd transparent;
 }
+
+/* Optional interface text size overrides for users who prefer larger UI copy. */
+:root[data-text-size="large"] {
+  font-size: 15px;
+}
+:root[data-text-size="large"] .requirements-scroll p,
+:root[data-text-size="large"] .requirements-scroll .summary {
+  font-size: 15px;
+}
+:root[data-text-size="large"] .requirements-list li {
+  font-size: 14.5px;
+}
+:root[data-text-size="large"] .example pre,
+:root[data-text-size="large"] .raw-output,
+:root[data-text-size="large"] .error-output,
+:root[data-text-size="large"] .test-results pre {
+  font-size: 14px;
+}
+:root[data-text-size="large"] .file,
+:root[data-text-size="large"] .active-tab,
+:root[data-text-size="large"] .folder-label,
+:root[data-text-size="large"] .console-tabs > button {
+  font-size: 13.5px;
+}
+:root[data-text-size="large"] .practice-note strong,
+:root[data-text-size="large"] .practice-note p,
+:root[data-text-size="large"] .explorer-tip strong,
+:root[data-text-size="large"] .explorer-tip p,
+:root[data-text-size="large"] .language-note {
+  font-size: 13.5px;
+}
+:root[data-text-size="xlarge"] {
+  font-size: 16px;
+}
+:root[data-text-size="xlarge"] .requirements-scroll p,
+:root[data-text-size="xlarge"] .requirements-scroll .summary {
+  font-size: 16.5px;
+}
+:root[data-text-size="xlarge"] .requirements-list li {
+  font-size: 16px;
+}
+:root[data-text-size="xlarge"] .example pre,
+:root[data-text-size="xlarge"] .raw-output,
+:root[data-text-size="xlarge"] .error-output,
+:root[data-text-size="xlarge"] .test-results pre {
+  font-size: 15px;
+}
+:root[data-text-size="xlarge"] .file,
+:root[data-text-size="xlarge"] .active-tab,
+:root[data-text-size="xlarge"] .folder-label,
+:root[data-text-size="xlarge"] .console-tabs > button {
+  font-size: 14.5px;
+}
+:root[data-text-size="xlarge"] .practice-note strong,
+:root[data-text-size="xlarge"] .practice-note p,
+:root[data-text-size="xlarge"] .explorer-tip strong,
+:root[data-text-size="xlarge"] .explorer-tip p,
+:root[data-text-size="xlarge"] .language-note {
+  font-size: 14.5px;
+}
