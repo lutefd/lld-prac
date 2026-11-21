@@ -107,6 +107,14 @@ function storedNumber(
   }
 }
 
+function persistPreference(key: string, value: unknown) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Ignore storage quota or private-mode errors.
+  }
+}
+
 export function browserLocale(languages: readonly string[]): Locale {
   return languages[0]?.toLowerCase().split("-")[0] === "pt" ? "pt-BR" : "en";
 }
@@ -226,46 +234,22 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     else document.documentElement.dataset.textSize = textSize;
   }, [textSize]);
   useEffect(() => {
-    try {
-      localStorage.setItem(
-        "workbench.locale",
-        JSON.stringify(localePreference),
-      );
-    } catch {}
+    persistPreference("workbench.locale", localePreference);
   }, [localePreference]);
   useEffect(() => {
-    try {
-      localStorage.setItem("workbench.theme", JSON.stringify(themePreference));
-    } catch {}
+    persistPreference("workbench.theme", themePreference);
   }, [themePreference]);
   useEffect(() => {
-    try {
-      localStorage.setItem(
-        "workbench.editorTheme",
-        JSON.stringify(editorThemePreference),
-      );
-    } catch {}
+    persistPreference("workbench.editorTheme", editorThemePreference);
   }, [editorThemePreference]);
   useEffect(() => {
-    try {
-      localStorage.setItem(
-        "workbench.editorFontFamily",
-        JSON.stringify(editorFontFamily),
-      );
-    } catch {}
+    persistPreference("workbench.editorFontFamily", editorFontFamily);
   }, [editorFontFamily]);
   useEffect(() => {
-    try {
-      localStorage.setItem(
-        "workbench.editorFontSize",
-        JSON.stringify(editorFontSize),
-      );
-    } catch {}
+    persistPreference("workbench.editorFontSize", editorFontSize);
   }, [editorFontSize]);
   useEffect(() => {
-    try {
-      localStorage.setItem("workbench.textSize", JSON.stringify(textSize));
-    } catch {}
+    persistPreference("workbench.textSize", textSize);
   }, [textSize]);
   const t: Translate = (source, values) => {
     const translated =

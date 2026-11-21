@@ -91,7 +91,7 @@ function expression(source: string, contract: Contract): string {
   // Keep strings as indivisible tokens so values such as "NewX(" are intact.
   const tokens =
     result.match(
-      /"(?:\\.|[^"\\])*"|\bNew\w+(?=\()|\bEntry(?=\()|\[|\]|[^"\[\]]/g,
+      /"(?:\\.|[^"\\])*"|\bNew\w+(?=\()|\bEntry(?=\()|\[|\]|[^"[\]]/g,
     ) || [];
   let arrayLiteral = false;
   result = tokens
@@ -130,8 +130,9 @@ function testSource(
   const lines = commands.map((command) => {
     const expr = expression(command.expression, contract);
     if (command.kind === "assign") {
-      const prefix = variables.has(command.name!) ? "" : "var ";
-      variables.add(command.name!);
+      if (!command.name) throw new Error("Assign command requires a variable name");
+      const prefix = variables.has(command.name) ? "" : "var ";
+      variables.add(command.name);
       return `    ${prefix}${command.name} = ${expr};`;
     }
     if (command.kind === "eq")

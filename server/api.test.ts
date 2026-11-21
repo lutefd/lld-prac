@@ -289,7 +289,9 @@ test("hosted origins are explicit and workspace capacity includes simultaneous o
       ),
     );
     assert.deepEqual(responses.map((r) => r.status).sort(), [200, 503]);
-    const workspace = await responses.find((r) => r.status === 200)!.json();
+    const okResponse = responses.find((r) => r.status === 200);
+    assert(okResponse, "Expected one 200 response");
+    const workspace = await okResponse.json();
     await fetch(`${base}/api/workspace/${workspace.sessionId}`, {
       method: "DELETE",
       headers,

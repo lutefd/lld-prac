@@ -1,7 +1,17 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 
 /** A small, transport-only JSON-RPC bridge. No completion generation occurs here. */
-type RpcParams = Record<string, any>;
+type RpcParams = Record<string, unknown>;
+type TrackedDocument = {
+  uri: string;
+  languageId?: string;
+  version?: number;
+  text?: string;
+};
+type ContentChange = {
+  range?: unknown;
+  text: string;
+};
 type RpcMessage = {
   jsonrpc?: string;
   id?: number | string;
@@ -28,7 +38,7 @@ export class LanguageServer {
   private command: string;
   private args: string[];
   private resuming?: Promise<void>;
-  private documents = new Map<string, RpcParams>();
+  private documents = new Map<string, TrackedDocument>();
   constructor(rootUri: string, command = "gopls", args = ["serve"]) {
     this.rootUri = rootUri;
     this.command = command;
@@ -201,7 +211,14 @@ export class LanguageServer {
 
   notify(method: string, params: RpcParams) {
     this.send({ method, params });
-    const document = params.textDocument;
+    const rawDocument = params.textDocument;
+    const document =
+      rawDocument &&
+      typeof rawDocument === "object" &&
+      "uri" in rawDocument &&
+      typeof rawDocument.uri === "string"
+        ? (rawDocument as TrackedDocument)
+        : undefined;
     if (method === "textDocument/didOpen" && document) {
       this.documents.set(document.uri, structuredClone(document));
     } else if (method === "textDocument/didChange" && document) {
@@ -209,7 +226,10 @@ export class LanguageServer {
       if (current) {
         // The browser bridge sends full-document changes, retaining unsaved text
         // for replay when an idle language server starts again.
-        for (const change of params.contentChanges ?? []) {
+        const changes = Array.isArray(params.contentChanges)
+          ? (params.contentChanges as ContentChange[])
+          : [];
+        for (const change of changes) {
           if (!change.range) current.text = change.text;
         }
         current.version = document.version;

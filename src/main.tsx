@@ -7,7 +7,9 @@ import "@fontsource/dm-sans/latin-600.css";
 import "@fontsource/dm-sans/latin-700.css";
 import "@fontsource/ibm-plex-mono/latin-400.css";
 import "./style.css";
-createRoot(document.getElementById("root")!).render(
+const rootElement = document.getElementById("root");
+if (!rootElement) throw new Error("Root element #root was not found");
+createRoot(rootElement).render(
   <PreferencesProvider>
     <App />
   </PreferencesProvider>,

@@ -4,6 +4,11 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
     "noEmit": true,
     "allowImportingTsExtensions": true,
@@ -14,6 +19,7 @@
     "server/**/*.ts",
     "shared/**/*.ts",
     "scripts/**/*.ts",
+    "tests/architecture.test.ts",
     "tests/lsp.integration.test.ts"
   ]
 }

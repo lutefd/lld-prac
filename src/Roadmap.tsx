@@ -80,7 +80,9 @@ export default function Roadmap({ problems }: { problems: RoadmapProblem[] }) {
                     "workbench.language",
                     JSON.stringify(e.target.value),
                   );
-                } catch {}
+                } catch {
+                  // Ignore storage quota or private-mode errors.
+                }
               }}
             >
               <option value="go">Go</option>

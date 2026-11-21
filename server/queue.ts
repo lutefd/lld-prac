@@ -93,7 +93,8 @@ export class TestQueue {
       this.active < this.concurrency &&
       this.waiting.length
     ) {
-      const entry = this.waiting.shift()!;
+      const entry = this.waiting.shift();
+      if (!entry) break;
       clearTimeout(entry.timer);
       entry.start();
     }

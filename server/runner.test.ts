@@ -94,7 +94,7 @@ for (const language of ["python", "typescript"] as const) {
     try {
       await Promise.all(
         Object.entries(files).map(([name, content]) =>
-          writeFile(path.join(directory, name), content!),
+          writeFile(path.join(directory, name), content ?? ""),
         ),
       );
       const result = await runTests(directory, language, 1, { mode: "native" });

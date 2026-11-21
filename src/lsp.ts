@@ -11,6 +11,65 @@ type LspRange = {
   start: { line: number; character: number };
   end: { line: number; character: number };
 };
+type LspMarkedString = string | { language?: string; value?: string };
+type LspMarkdownInput = LspMarkedString | LspMarkedString[] | null | undefined;
+type LspTextEdit = {
+  range?: LspRange;
+  replace?: LspRange;
+  newText: string;
+};
+type LspCompletionItem = {
+  label: string;
+  kind?: number;
+  detail?: string;
+  documentation?: LspMarkdownInput;
+  sortText?: string;
+  filterText?: string;
+  insertText?: string;
+  insertTextFormat?: number;
+  textEdit?: LspTextEdit;
+  additionalTextEdits?: Array<{ range: LspRange; newText: string }>;
+  data?: unknown;
+};
+type LspCompletionResult =
+  | LspCompletionItem[]
+  | { isIncomplete?: boolean; items?: LspCompletionItem[] };
+type LspHoverResult = {
+  contents?: LspMarkdownInput;
+  range?: LspRange;
+};
+type LspSignatureHelpResult = {
+  activeSignature?: number;
+  activeParameter?: number;
+  signatures?: Array<{
+    label: string;
+    documentation?: LspMarkdownInput;
+    parameters?: Array<{
+      label: string | [number, number];
+      documentation?: LspMarkdownInput;
+    }>;
+  }>;
+};
+type LspLocation = {
+  uri?: string;
+  targetUri?: string;
+  range?: LspRange;
+  targetSelectionRange?: LspRange;
+};
+type LspDiagnostic = {
+  range: LspRange;
+  message: string;
+  source?: string;
+  code?: string | number;
+  severity?: number;
+};
+type LspDiagnosticReport = {
+  uri: string;
+  diagnostics: LspDiagnostic[];
+};
+type MonacoCompletionWithLsp = monaco.languages.CompletionItem & {
+  lspItem?: LspCompletionItem;
+};
 
 export const fromRange = (range: LspRange): monaco.IRange => ({
   startLineNumber: range.start.line + 1,
@@ -22,14 +81,14 @@ const position = (value: monaco.Position) => ({
   line: value.lineNumber - 1,
   character: value.column - 1,
 });
-const markdown = (value: any): monaco.IMarkdownString[] => {
+const markdown = (value: LspMarkdownInput): monaco.IMarkdownString[] => {
   if (!value) return [];
   if (Array.isArray(value)) return value.flatMap(markdown);
   if (typeof value === "string") return [{ value }];
   return [
     {
       value: value.language
-        ? `\`\`\`${value.language}\n${value.value}\n\`\`\``
+        ? `\`\`\`${value.language}\n${value.value ?? ""}\n\`\`\``
         : value.value || "",
     },
   ];
@@ -69,8 +128,8 @@ export class GoLanguageService {
     return `${this.session.rootUri.replace(/\/$/, "")}/${path}`;
   }
 
-  request(method: string, params: unknown): Promise<any> {
-    const task = this.queue.then(async () => {
+  request<T = unknown>(method: string, params: unknown): Promise<T | null> {
+    const task = this.queue.then(async (): Promise<T | null> => {
       if (this.disposed) return null;
       const response = await fetch(
         `/api/workspace/${this.session.sessionId}/lsp`,
@@ -85,9 +144,11 @@ export class GoLanguageService {
         throw new Error(
           data.error?.message || data.error || "Language server unavailable",
         );
-      return Object.prototype.hasOwnProperty.call(data, "result")
-        ? data.result
-        : data;
+      return (
+        Object.prototype.hasOwnProperty.call(data, "result")
+          ? data.result
+          : data
+      ) as T | null;
     });
     this.queue = task.catch(() => undefined);
     return task;
@@ -165,13 +226,16 @@ export class GoLanguageService {
         provideCompletionItems: async (model, value, context, token) => {
           if (!owns(model)) return { suggestions: [] };
           try {
-            const result = await this.request("textDocument/completion", {
-              ...params(model, value),
-              context: {
-                triggerKind: context.triggerKind + 1,
-                triggerCharacter: context.triggerCharacter,
+            const result = await this.request<LspCompletionResult>(
+              "textDocument/completion",
+              {
+                ...params(model, value),
+                context: {
+                  triggerKind: context.triggerKind + 1,
+                  triggerCharacter: context.triggerCharacter,
+                },
               },
-            });
+            );
             if (token.isCancellationRequested || !result)
               return { suggestions: [] };
             const word = model.getWordUntilPosition(value);
@@ -181,50 +245,52 @@ export class GoLanguageService {
               startColumn: word.startColumn,
               endColumn: word.endColumn,
             };
+            const items = Array.isArray(result) ? result : result.items || [];
             return {
-              incomplete: result.isIncomplete,
-              suggestions: (Array.isArray(result)
-                ? result
-                : result.items || []
-              ).map((item: any) => ({
-                label: item.label,
-                kind:
-                  completionKinds[item.kind] ??
-                  monaco.languages.CompletionItemKind.Text,
-                detail: item.detail,
-                documentation: markdown(item.documentation)[0],
-                sortText: item.sortText,
-                filterText: item.filterText,
-                insertText:
-                  item.textEdit?.newText ?? item.insertText ?? item.label,
-                range: item.textEdit?.range
-                  ? fromRange(item.textEdit.range)
-                  : item.textEdit?.replace
-                    ? fromRange(item.textEdit.replace)
-                    : fallback,
-                insertTextRules:
-                  item.insertTextFormat === 2
-                    ? monaco.languages.CompletionItemInsertTextRule
-                        .InsertAsSnippet
-                    : undefined,
-                additionalTextEdits: item.additionalTextEdits?.map(
-                  (edit: any) => ({
+              incomplete: Array.isArray(result) ? false : result.isIncomplete,
+              suggestions: items.map(
+                (item): MonacoCompletionWithLsp => ({
+                  label: item.label,
+                  kind:
+                    (item.kind !== undefined
+                      ? completionKinds[item.kind]
+                      : undefined) ?? monaco.languages.CompletionItemKind.Text,
+                  detail: item.detail,
+                  documentation: markdown(item.documentation)[0],
+                  sortText: item.sortText,
+                  filterText: item.filterText,
+                  insertText:
+                    item.textEdit?.newText ?? item.insertText ?? item.label,
+                  range: item.textEdit?.range
+                    ? fromRange(item.textEdit.range)
+                    : item.textEdit?.replace
+                      ? fromRange(item.textEdit.replace)
+                      : fallback,
+                  insertTextRules:
+                    item.insertTextFormat === 2
+                      ? monaco.languages.CompletionItemInsertTextRule
+                          .InsertAsSnippet
+                      : undefined,
+                  additionalTextEdits: item.additionalTextEdits?.map((edit) => ({
                     range: fromRange(edit.range),
                     text: edit.newText,
-                  }),
-                ),
-                lspItem: item,
-              })),
+                  })),
+                  lspItem: item,
+                }),
+              ),
             };
           } catch {
             return { suggestions: [] };
           }
         },
         resolveCompletionItem: async (suggestion, token) => {
-          const raw = (suggestion as any).lspItem;
+          const raw = (suggestion as MonacoCompletionWithLsp).lspItem;
           if (!raw?.data || token.isCancellationRequested) return suggestion;
           try {
-            const item = await this.request("completionItem/resolve", raw);
+            const item = await this.request<LspCompletionItem>(
+              "completionItem/resolve",
+              raw,
+            );
             if (!item || token.isCancellationRequested) return suggestion;
             return {
               ...suggestion,
@@ -232,7 +298,7 @@ export class GoLanguageService {
               documentation:
                 markdown(item.documentation)[0] ?? suggestion.documentation,
               additionalTextEdits:
-                item.additionalTextEdits?.map((edit: any) => ({
+                item.additionalTextEdits?.map((edit) => ({
                   range: fromRange(edit.range),
                   text: edit.newText,
                 })) ?? suggestion.additionalTextEdits,
@@ -248,7 +314,7 @@ export class GoLanguageService {
         provideHover: async (model, value, token) => {
           if (!owns(model)) return null;
           try {
-            const result = await this.request(
+            const result = await this.request<LspHoverResult>(
               "textDocument/hover",
               params(model, value),
             );
@@ -270,7 +336,7 @@ export class GoLanguageService {
         provideSignatureHelp: async (model, value, token) => {
           if (!owns(model)) return null;
           try {
-            const result = await this.request(
+            const result = await this.request<LspSignatureHelpResult>(
               "textDocument/signatureHelp",
               params(model, value),
             );
@@ -279,10 +345,10 @@ export class GoLanguageService {
               value: {
                 activeSignature: result.activeSignature ?? 0,
                 activeParameter: result.activeParameter ?? 0,
-                signatures: (result.signatures || []).map((item: any) => ({
+                signatures: (result.signatures || []).map((item) => ({
                   label: item.label,
                   documentation: markdown(item.documentation)[0],
-                  parameters: (item.parameters || []).map((parameter: any) => ({
+                  parameters: (item.parameters || []).map((parameter) => ({
                     label: parameter.label,
                     documentation: markdown(parameter.documentation)[0],
                   })),
@@ -301,19 +367,29 @@ export class GoLanguageService {
         provideDefinition: async (model, value, token) => {
           if (!owns(model)) return null;
           try {
-            const result = await this.request(
+            const result = await this.request<LspLocation | LspLocation[]>(
               "textDocument/definition",
               params(model, value),
             );
             if (!result || token.isCancellationRequested) return null;
-            return (Array.isArray(result) ? result : [result]).map(
-              (location: any) => ({
-                uri: monaco.Uri.parse(location.uri || location.targetUri),
-                range: fromRange(
-                  location.range || location.targetSelectionRange,
+            return (Array.isArray(result) ? result : [result])
+              .filter(
+                (location) =>
+                  Boolean(location.uri || location.targetUri) &&
+                  Boolean(location.range || location.targetSelectionRange),
+              )
+              .map((location) => ({
+                uri: monaco.Uri.parse(
+                  location.uri || location.targetUri || "",
                 ),
-              }),
-            );
+                range: fromRange(
+                  location.range ||
+                    location.targetSelectionRange || {
+                      start: { line: 0, character: 0 },
+                      end: { line: 0, character: 0 },
+                    },
+                ),
+              }));
           } catch {
             return null;
           }
@@ -325,12 +401,14 @@ export class GoLanguageService {
         provideDocumentFormattingEdits: async (model, options, token) => {
           if (!owns(model)) return [];
           try {
-            const result = await this.request("textDocument/formatting", {
+            const result = await this.request<
+              Array<{ range: LspRange; newText: string }>
+            >("textDocument/formatting", {
               textDocument: { uri: model.uri.toString() },
               options,
             });
             if (!result || token.isCancellationRequested) return [];
-            return result.map((edit: any) => ({
+            return result.map((edit) => ({
               range: fromRange(edit.range),
               text: edit.newText,
             }));
@@ -347,7 +425,9 @@ export class GoLanguageService {
           `/api/workspace/${this.session.sessionId}/diagnostics`,
         );
         if (!response.ok || this.disposed) return;
-        const data = await response.json();
+        const data = (await response.json()) as {
+          diagnostics?: LspDiagnosticReport[];
+        };
         if (this.disposed) return;
         for (const report of data.diagnostics || []) {
           const model = monaco.editor.getModel(monaco.Uri.parse(report.uri));
@@ -355,7 +435,7 @@ export class GoLanguageService {
           monaco.editor.setModelMarkers(
             model,
             "practice-lsp",
-            report.diagnostics.map((item: any) => ({
+            report.diagnostics.map((item) => ({
               ...fromRange(item.range),
               message: item.message,
               source: item.source || serverName,

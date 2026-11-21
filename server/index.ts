@@ -21,11 +21,9 @@ type Workspace = {
   closing?: boolean;
   lsp?: LanguageServer | null;
 };
-declare global {
-  namespace Express {
-    interface Request {
-      workspace: Workspace;
-    }
+declare module "express-serve-static-core" {
+  interface Request {
+    workspace: Workspace;
   }
 }
 type AppOptions = {
@@ -317,21 +315,25 @@ export function createApp({
     };
   })();
   app.use("/api", (req, res, next) => {
-    if (!hostnames.has(req.hostname))
-      return res.status(403).json({ error: "Host is not allowed" });
+    if (!hostnames.has(req.hostname)) {
+      res.status(403).json({ error: "Host is not allowed" });
+      return;
+    }
     if (req.headers.origin) {
       let origin;
       try {
         origin = new URL(req.headers.origin);
       } catch {
-        return res.status(403).json({ error: "Invalid origin" });
+        res.status(403).json({ error: "Invalid origin" });
+        return;
       }
       if (
         !origins.has(origin.origin) &&
         (!["localhost", "127.0.0.1", "[::1]"].includes(origin.hostname) ||
           !["3001", "5173", "4173"].includes(origin.port))
       ) {
-        return res.status(403).json({ error: "Origin is not allowed" });
+        res.status(403).json({ error: "Origin is not allowed" });
+        return;
       }
     }
     next();
@@ -371,10 +373,12 @@ export function createApp({
   };
 
   app.post("/api/workspace", async (req, res, next) => {
-    if (closed || sessions.size + opening >= maxWorkspaces)
-      return res
+    if (closed || sessions.size + opening >= maxWorkspaces) {
+      res
         .status(503)
         .json({ error: "Workspace limit reached; try again later" });
+      return;
+    }
     opening++;
     let created: Workspace | undefined;
     let directory: string | undefined;
@@ -382,10 +386,15 @@ export function createApp({
       await Promise.all([healthReady, storageReady]);
       if (closed) throw new Error("Server is shutting down");
       const problem = catalog.find((item) => item.id === req.body.problemId);
-      if (!problem) return res.status(404).json({ error: "Unknown exercise" });
+      if (!problem) {
+        res.status(404).json({ error: "Unknown exercise" });
+        return;
+      }
       const language = (req.body.language || "go") as Language;
-      if (!Object.hasOwn(lspCommands, language))
-        return res.status(400).json({ error: "Unsupported language" });
+      if (!Object.hasOwn(lspCommands, language)) {
+        res.status(400).json({ error: "Unsupported language" });
+        return;
+      }
       const files: File[] = structuredClone(getFiles(problem, language));
       // Validate before creating a directory or starting a language server.
       files.push(...restoreCreatedFiles(req.body.files ?? [], language, files));
@@ -470,10 +479,12 @@ export function createApp({
 
   app.use("/api/workspace/:id", (req, res, next) => {
     const session = sessions.get(String(req.params.id));
-    if (!session)
-      return res
+    if (!session) {
+      res
         .status(404)
         .json({ error: "Workspace expired; reopen the exercise" });
+      return;
+    }
     if (req.method !== "GET") session.lastUsed = Date.now();
     req.workspace = session;
     next();
@@ -481,10 +492,12 @@ export function createApp({
 
   app.post("/api/workspace/:id/files", async (req, res, next) => {
     try {
-      if (req.workspace.running)
-        return res
+      if (req.workspace.running) {
+        res
           .status(409)
           .json({ error: "Tests are already queued or running" });
+        return;
+      }
       await saveFiles(req.workspace, req.body.files);
       res.json({ saved: true });
     } catch (error) {
@@ -493,10 +506,12 @@ export function createApp({
   });
   app.post("/api/workspace/:id/create-file", async (req, res, next) => {
     const session = req.workspace;
-    if (session.running)
-      return res
+    if (session.running) {
+      res
         .status(409)
         .json({ error: "Tests are already queued or running" });
+      return;
+    }
     try {
       const filePath = validateNewFile(
         req.body.path,
@@ -532,10 +547,12 @@ export function createApp({
   });
   app.post("/api/workspace/:id/delete-file", async (req, res, next) => {
     const session = req.workspace;
-    if (session.running)
-      return res
+    if (session.running) {
+      res
         .status(409)
         .json({ error: "Tests are already queued or running" });
+      return;
+    }
     try {
       const filePath = req.body?.path;
       const index =
@@ -544,10 +561,12 @@ export function createApp({
               (file) => file.path === filePath && file.userCreated === true,
             )
           : -1;
-      if (index === -1)
-        return res
+      if (index === -1) {
+        res
           .status(400)
           .json({ error: "Only added files can be removed" });
+        return;
+      }
       const [removed] = session.files.splice(index, 1);
       const fullPath = path.join(session.directory, removed.path);
       const remove = session.saving.then(async () => {
@@ -575,8 +594,10 @@ export function createApp({
   });
   app.post("/api/workspace/:id/run", async (req, res, next) => {
     const session = req.workspace;
-    if (session.running)
-      return res.status(409).json({ error: "Tests are already running" });
+    if (session.running) {
+      res.status(409).json({ error: "Tests are already running" });
+      return;
+    }
     try {
       const level = req.body.level;
       if (
@@ -584,8 +605,10 @@ export function createApp({
         level < 1 ||
         level > session.problem.levels.length ||
         level > 9
-      )
-        return res.status(400).json({ error: "Invalid level" });
+      ) {
+        res.status(400).json({ error: "Invalid level" });
+        return;
+      }
       session.running = true;
       validateFiles(req.body.files ?? [], session.files);
       res.json(
@@ -613,13 +636,17 @@ export function createApp({
   app.post("/api/workspace/:id/lsp", async (req, res, next) => {
     try {
       const session = req.workspace;
-      if (!session.lsp)
-        return res.status(503).json({
+      if (!session.lsp) {
+        res.status(503).json({
           error: "Language server unavailable; install it and restart the app",
         });
+        return;
+      }
       const { method, params } = req.body;
-      if (!allowedMethods.has(method))
-        return res.status(400).json({ error: "Unsupported LSP method" });
+      if (!allowedMethods.has(method)) {
+        res.status(400).json({ error: "Unsupported LSP method" });
+        return;
+      }
       const uri = params?.textDocument?.uri;
       if (
         method !== "completionItem/resolve" &&
@@ -632,9 +659,10 @@ export function createApp({
                 uri,
           ))
       ) {
-        return res
+        res
           .status(400)
           .json({ error: "Document is outside this workspace" });
+        return;
       }
       await session.lsp.resume();
       if (notifications.has(method)) {

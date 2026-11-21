@@ -85,7 +85,9 @@ const read = <T,>(key: string, fallback: T): T => {
 const write = (key: string, value: unknown) => {
   try {
     localStorage.setItem(key, JSON.stringify(value));
-  } catch {}
+  } catch {
+    // Ignore storage quota or private-mode errors.
+  }
 };
 async function api<T = unknown>(
   path: string,
@@ -153,7 +155,9 @@ export default function App() {
   try {
     const match = pathname.match(/^\/practice\/([^/]+)$/);
     if (match) problemId = decodeURIComponent(match[1]);
-  } catch {}
+  } catch {
+    // Malformed percent-encoding falls through to the not-found view.
+  }
   const problem = problems.find((p) => p.id === problemId);
   if (!problem)
     return (
@@ -259,6 +263,7 @@ function Workspace({
     write("workbench.problem", problem.id);
     write("workbench.language", language);
     const gen = ++generation.current;
+    let cancelled = false;
     let openedId: string | undefined;
     setRunning(false);
     setSession(null);
@@ -280,7 +285,7 @@ function Workspace({
     })
       .then((data) => {
         openedId = data.sessionId;
-        if (gen !== generation.current) {
+        if (cancelled || gen !== generation.current) {
           void fetch(`/api/workspace/${openedId}`, { method: "DELETE" });
           return;
         }
@@ -299,16 +304,23 @@ function Workspace({
         );
       })
       .catch((e) => {
-        if (gen === generation.current) setError(e.message);
+        if (!cancelled && gen === generation.current) setError(e.message);
       });
     return () => {
-      generation.current++;
+      cancelled = true;
       runningRequest.current?.abort();
       runningRequest.current = null;
       if (openedId)
         void fetch(`/api/workspace/${openedId}`, { method: "DELETE" });
     };
-  }, [problem.id, language, revision]);
+  }, [
+    problem.id,
+    problem.levels.length,
+    language,
+    revision,
+    draftKey,
+    progressKey,
+  ]);
   useEffect(() => {
     if (!timer) return;
     const id = setInterval(() => setSeconds((s) => s + 1), 1000);
