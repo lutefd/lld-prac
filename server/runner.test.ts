@@ -51,7 +51,7 @@ test("process timeout stops a runaway process and preserves console output", asy
     process.execPath,
     ["-e", 'console.log("before loop");while(true){}'],
     os.tmpdir(),
-    { timeoutMs: 300 },
+    { timeoutMs: 1000 },
   );
   assert.equal(result.passed, false);
   assert.equal(result.timedOut, true);

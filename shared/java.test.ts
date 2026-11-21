@@ -78,12 +78,56 @@ test(
   },
   async () => {
     const root = await mkdtemp(path.join(tmpdir(), "lld-java-catalog-"));
+    const driver = path.join(root, "CatalogDriver.java");
+    await writeFile(
+      driver,
+      `import java.lang.reflect.InvocationTargetException;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.nio.file.Path;
+public final class CatalogDriver {
+  public static void main(String[] dirs) throws Exception {
+    for (String dir : dirs) {
+      try (var loader = new URLClassLoader(new URL[]{Path.of(dir).toUri().toURL()}, ClassLoader.getPlatformClassLoader())) {
+        loader.setDefaultAssertionStatus(true);
+        for (int level = 1; level <= 3; level++) {
+          String name = "Level" + level + "Test";
+          Throwable caught = null;
+          try {
+            loader.loadClass(name).getMethod("main", String[].class).invoke(null, (Object) new String[0]);
+          } catch (InvocationTargetException e) {
+            caught = e.getCause();
+          }
+          if (!(caught instanceof AssertionError)) {
+            throw new IllegalStateException(dir + " " + name + " expected AssertionError, got: " + caught);
+          }
+        }
+        loader.loadClass("SandboxTest").getMethod("main", String[].class).invoke(null, (Object) new String[0]);
+      }
+    }
+  }
+}
+`,
+    );
+    const compiledDriver = await runCommand(
+      "javac",
+      ["--release", "21", "-proc:none", driver],
+      root,
+    );
+    assert.equal(
+      compiledDriver.status,
+      0,
+      `CatalogDriver: ${compiledDriver.stdout}${compiledDriver.stderr}`,
+    );
     try {
       let cursor = 0;
+      const concurrency = Math.max(
+        1,
+        Math.min(4, Math.ceil(availableParallelism() / 2)),
+      );
+      const compiledDirs: string[] = [];
       const workers = Array.from(
-        {
-          length: Math.min(problems.length, Math.max(2, availableParallelism())),
-        },
+        { length: Math.min(problems.length, concurrency) },
         async () => {
           while (cursor < problems.length) {
             const problem = problems[cursor++];
@@ -103,37 +147,27 @@ test(
               0,
               `${problem.id}: ${compiled.stdout}${compiled.stderr}`,
             );
-            for (let level = 1; level <= 3; level++) {
-              const result = await runCommand(
-                "java",
-                ["-XX:TieredStopAtLevel=1", `Level${level}Test`],
-                dir,
-              );
-              assert.equal(
-                result.status,
-                1,
-                `${problem.id} level ${level} must fail`,
-              );
-              assert.match(
-                result.stderr,
-                /AssertionError/,
-                `${problem.id}: ${result.stderr}`,
-              );
-              assert.doesNotMatch(
-                result.stderr,
-                /Exception in thread.*(?:NullPointer|ArrayIndexOutOfBounds|ClassNotFound)/,
-              );
-            }
-            const sandbox = await runCommand(
-              "java",
-              ["-XX:TieredStopAtLevel=1", "SandboxTest"],
-              dir,
-            );
-            assert.equal(sandbox.status, 0, `${problem.id}: ${sandbox.stderr}`);
+            compiledDirs.push(dir);
           }
         },
       );
       await Promise.all(workers);
+      const runAll = await runCommand(
+        "java",
+        [
+          "-XX:TieredStopAtLevel=1",
+          "-cp",
+          root,
+          "CatalogDriver",
+          ...compiledDirs,
+        ],
+        root,
+      );
+      assert.equal(
+        runAll.status,
+        0,
+        `Java catalog run failed:\n${runAll.stdout}${runAll.stderr}`,
+      );
     } finally {
       await rm(root, { recursive: true, force: true });
     }

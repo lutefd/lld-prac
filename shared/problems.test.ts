@@ -86,6 +86,7 @@ test("every Go starter and its visible/hidden tests compile; starter fails real 
   const goEnv: NodeJS.ProcessEnv = {
     ...process.env,
     CGO_ENABLED: "0",
+    GOMAXPROCS: "1",
     GOWORK: "off",
     GOPROXY: "off",
     GOTOOLCHAIN: "local",
@@ -94,8 +95,12 @@ test("every Go starter and its visible/hidden tests compile; starter fails real 
   };
   try {
     let cursor = 0;
+    const concurrency = Math.max(
+      1,
+      Math.min(4, Math.ceil(availableParallelism() / 2)),
+    );
     const workers = Array.from(
-      { length: Math.min(problems.length, Math.max(2, availableParallelism())) },
+      { length: Math.min(problems.length, concurrency) },
       async () => {
         while (cursor < problems.length) {
           const p = problems[cursor++];

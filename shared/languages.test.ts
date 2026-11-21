@@ -67,8 +67,12 @@ for n in (1, 2, 3):
 `;
   try {
     let cursor = 0;
+    const concurrency = Math.max(
+      1,
+      Math.min(4, Math.ceil(availableParallelism() / 2)),
+    );
     const workers = Array.from(
-      { length: Math.min(problems.length, Math.max(2, availableParallelism())) },
+      { length: Math.min(problems.length, concurrency) },
       async () => {
         while (cursor < problems.length) {
           const problem = problems[cursor++];
