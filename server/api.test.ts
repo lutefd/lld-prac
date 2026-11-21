@@ -410,3 +410,11 @@ test("diagnostics polling does not prevent idle workspace expiry", async () => {
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test("Java extra files use the Java extension", () => {
+  assert.equal(
+    validateNewFile("models/Driver.java", "java", []),
+    "models/Driver.java",
+  );
+  assert.throws(() => validateNewFile("Driver.ts", "java", []), /\.java/);
+});

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { runProcess, runTests } from "./runner.ts";
+import { commandFor, runProcess, runTests } from "./runner.ts";
 
 test("test runner excludes future levels, includes hidden and arbitrary user tests, and isolates workspace mutations", async () => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "lld-run-test-"));
@@ -189,3 +189,77 @@ for (const language of ["go", "python", "typescript"] as const) {
     }
   });
 }
+
+const javaAvailable = (await runProcess("javac", ["-version"], os.tmpdir()))
+  .passed;
+test(
+  "Java compiles selected levels once, executes nested personal tests, and reports failures",
+  { skip: !javaAvailable },
+  async () => {
+    const directory = await mkdtemp(path.join(os.tmpdir(), "lld-java-test-"));
+    const { mkdir, access } = await import("node:fs/promises");
+    try {
+      const files = {
+        "Implementation.java":
+          "class Implementation { static int answer() { return models.Helper.value(); } }",
+        "Level1Test.java":
+          'public class Level1Test { public static void main(String[] args) { if (Implementation.answer()!=42) throw new AssertionError("helper"); } }',
+        "HiddenLevel1Test.java":
+          'public class HiddenLevel1Test { public static void main(String[] args) { System.out.println("hidden regression"); } }',
+        "Level2Test.java": "future source must not compile",
+        "models/Helper.java":
+          "package models; public class Helper { public static int value() { return 42; } }",
+        "models/Level9Test.java":
+          'package models; public class Level9Test { public static void main(String[] args) throws Exception { assert Helper.value()==42; System.out.println("nested user test ran"); java.nio.file.Files.writeString(java.nio.file.Path.of("marker"), "snapshot"); } }',
+      };
+      for (const [filename, content] of Object.entries(files)) {
+        await mkdir(path.dirname(path.join(directory, filename)), {
+          recursive: true,
+        });
+        await writeFile(path.join(directory, filename), content);
+      }
+      const options = {
+        mode: "native",
+        suppliedFiles: [
+          "Implementation.java",
+          "Level1Test.java",
+          "HiddenLevel1Test.java",
+          "Level2Test.java",
+        ],
+      };
+      const passing = await runTests(directory, "java", 1, options);
+      assert.equal(passing.passed, true, passing.output);
+      assert.match(passing.output, /hidden regression/);
+      assert.match(passing.output, /nested user test ran/);
+      await assert.rejects(access(path.join(directory, "marker")));
+      await writeFile(
+        path.join(directory, "models/Level9Test.java"),
+        'package models; public class Level9Test { public static void main(String[] args) { throw new AssertionError("deliberate user failure"); } }',
+      );
+      const failing = await runTests(directory, "java", 1, options);
+      assert.equal(failing.passed, false);
+      assert.match(failing.output, /deliberate user failure/);
+      const future = await runTests(directory, "java", 2, options);
+      assert.equal(future.passed, false);
+      assert.match(future.output, /Level2Test.java/);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  },
+);
+
+test("Java command uses the local harness and includes every source", () => {
+  const command = commandFor("java", [
+    "Implementation.java",
+    "models/Helper.java",
+    "Level1Test.java",
+    "notes.txt",
+  ]);
+  assert.equal(command.command, "java");
+  assert.match(command.args.join(" "), /PracticeRunner\.java/);
+  assert.deepEqual(command.args.slice(-3), [
+    "Implementation.java",
+    "models/Helper.java",
+    "Level1Test.java",
+  ]);
+});

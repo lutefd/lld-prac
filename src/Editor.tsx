@@ -159,9 +159,11 @@ export default function Editor({
           ? "python"
           : file.path.endsWith(".ts")
             ? "typescript"
-            : file.path.endsWith(".json")
-              ? "plaintext"
-              : "plaintext";
+            : file.path.endsWith(".java")
+              ? "java"
+              : file.path.endsWith(".json")
+                ? "plaintext"
+                : "plaintext";
       const model = monaco.editor.createModel(file.content, language, uri);
       models.current.set(file.path, model);
       service.open(model);

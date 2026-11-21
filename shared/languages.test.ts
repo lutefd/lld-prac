@@ -10,7 +10,7 @@ import { getFiles, languageNotes } from "./languages.ts";
 test("every problem provides editable code, sandbox, and three levels of visible and hidden tests", () => {
   for (const problem of problems) {
     assert.equal(getFiles(problem, "go"), problem.files);
-    for (const language of ["python", "typescript"]) {
+    for (const language of ["python", "typescript", "java"]) {
       const files = getFiles(problem, language);
       assert.equal(files.filter((f) => f.hidden).length, 3, problem.id);
       assert.equal(files.filter((f) => !f.readOnly).length, 2, problem.id);

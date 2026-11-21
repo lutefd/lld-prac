@@ -1,6 +1,6 @@
 import express, { type Express, type ErrorRequestHandler } from "express";
 import type { PracticeProblem } from "../shared/problems.ts";
-type Language = "go" | "python" | "typescript";
+type Language = "go" | "python" | "typescript" | "java";
 type File = {
   path: string;
   content: string;
@@ -136,7 +136,12 @@ export function validateNewFile(
     )
   )
     throw new Error("Invalid source file path");
-  const extension = { go: ".go", python: ".py", typescript: ".ts" }[language];
+  const extension = {
+    go: ".go",
+    python: ".py",
+    typescript: ".ts",
+    java: ".java",
+  }[language];
   if (!filePath.endsWith(extension))
     throw new Error(`Use a ${extension} source file for this language`);
   const folded = filePath.toLowerCase();
@@ -271,6 +276,7 @@ export function createApp({
     go: ["gopls", ["serve"]],
     python: [bin("pyright-langserver"), ["--stdio"]],
     typescript: [bin("typescript-language-server"), ["--stdio"]],
+    java: [process.env.PRACTICE_JAVA_LSP || "jdtls", []],
   };
   const health = {
     go: false,
@@ -279,24 +285,30 @@ export function createApp({
       go: { runtime: false, lsp: false },
       python: { runtime: false, lsp: false },
       typescript: { runtime: false, lsp: false },
+      java: { runtime: false, lsp: false },
     },
     runner: process.env.PRACTICE_RUNNER || "native",
   };
   const healthReady = (async () => {
-    const [go, gopls, python, pyright, node, tsserver] = await Promise.all([
-      commandAvailable("go", ["version"]),
-      commandAvailable("gopls", ["version"]),
-      commandAvailable("python3"),
-      commandAvailable(bin("pyright")),
-      commandAvailable("node"),
-      commandAvailable(bin("typescript-language-server")),
-    ]);
+    const [go, gopls, python, pyright, node, tsserver, java, javac, jdtls] =
+      await Promise.all([
+        commandAvailable("go", ["version"]),
+        commandAvailable("gopls", ["version"]),
+        commandAvailable("python3"),
+        commandAvailable(bin("pyright")),
+        commandAvailable("node"),
+        commandAvailable(bin("typescript-language-server")),
+        commandAvailable("java", ["-version"]),
+        commandAvailable("javac", ["-version"]),
+        commandAvailable(lspCommands.java[0], ["--help"]),
+      ]);
     health.go = go;
     health.gopls = gopls;
     health.languages = {
       go: { runtime: go, lsp: gopls },
       python: { runtime: python, lsp: pyright },
       typescript: { runtime: node, lsp: tsserver },
+      java: { runtime: java && javac, lsp: jdtls },
     };
   })();
   app.use("/api", (req, res, next) => {
@@ -403,7 +415,14 @@ export function createApp({
       await saveFiles(session, req.body.files);
       if (health.languages[language].lsp && enableLsp) {
         try {
-          session.lsp = new LanguageServer(rootUri, ...lspCommands[language]);
+          const [command, args] = lspCommands[language];
+          session.lsp = new LanguageServer(
+            rootUri,
+            command,
+            language === "java"
+              ? ["-data", path.join(directory, ".jdtls")]
+              : args,
+          );
           await session.lsp.initialize();
         } catch {
           session.lsp?.dispose();

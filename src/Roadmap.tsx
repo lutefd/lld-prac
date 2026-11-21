@@ -86,6 +86,7 @@ export default function Roadmap({ problems }: { problems: RoadmapProblem[] }) {
               <option value="go">Go</option>
               <option value="python">Python</option>
               <option value="typescript">TypeScript</option>
+              <option value="java">Java</option>
             </select>
           </label>
           <span>
