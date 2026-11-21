@@ -16,7 +16,7 @@ public final class PracticeRunner {
         if (compiler == null) throw new IllegalStateException("Java tests require a JDK (Java 21+), not a JRE");
         var output = Files.createTempDirectory("workbench-java-");
         try {
-            var arguments = new ArrayList<String>(List.of("--release", "21", "-encoding", "UTF-8", "-d", output.toString()));
+            var arguments = new ArrayList<String>(List.of("--release", "21", "-proc:none", "-encoding", "UTF-8", "-d", output.toString()));
             arguments.addAll(Arrays.asList(sources));
             if (compiler.run(null, System.out, System.err, arguments.toArray(String[]::new)) != 0) return 1;
             int failures = 0;
