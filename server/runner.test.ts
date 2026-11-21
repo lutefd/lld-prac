@@ -248,7 +248,7 @@ test(
   },
 );
 
-test("Java command uses the local harness and includes every source", () => {
+test("Java command uses the local harness with C1-only JIT and includes every source", () => {
   const command = commandFor("java", [
     "Implementation.java",
     "models/Helper.java",
@@ -256,10 +256,25 @@ test("Java command uses the local harness and includes every source", () => {
     "notes.txt",
   ]);
   assert.equal(command.command, "java");
+  assert.ok(command.args.includes("-XX:TieredStopAtLevel=1"));
   assert.match(command.args.join(" "), /PracticeRunner\.java/);
   assert.deepEqual(command.args.slice(-3), [
     "Implementation.java",
     "models/Helper.java",
     "Level1Test.java",
+  ]);
+});
+
+test("TypeScript command disables per-file process isolation for faster test runs", () => {
+  const command = commandFor("typescript", [
+    "implementation.ts",
+    "level_1.test.ts",
+    "hidden_level_1.test.ts",
+  ]);
+  assert.equal(command.command, "node");
+  assert.ok(command.args.includes("--test-isolation=none"));
+  assert.deepEqual(command.args.slice(-2), [
+    "level_1.test.ts",
+    "hidden_level_1.test.ts",
   ]);
 });

@@ -1,9 +1,83 @@
 import { spawn } from "node:child_process";
+import { createHash } from "node:crypto";
 import { performance } from "node:perf_hooks";
-import { mkdtemp, mkdir, cp, readdir, rm } from "node:fs/promises";
+import {
+  access,
+  cp,
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rename,
+  rm,
+} from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+const javaHarnessSource = fileURLToPath(
+  new URL("./java/PracticeRunner.java", import.meta.url),
+);
+let javaHarnessPromise: Promise<string | null> | undefined;
+
+async function ensureJavaHarness(): Promise<string | null> {
+  if (!javaHarnessPromise) {
+    javaHarnessPromise = (async () => {
+      try {
+        const source = await readFile(javaHarnessSource, "utf8");
+        const hash = createHash("sha256")
+          .update(source)
+          .digest("hex")
+          .slice(0, 12);
+        const cacheDir = path.join(
+          os.tmpdir(),
+          `workbench-java-harness-${hash}`,
+        );
+        const classFile = path.join(cacheDir, "PracticeRunner.class");
+        try {
+          await access(classFile);
+          return cacheDir;
+        } catch {
+          // Not compiled yet; build into a sibling temp dir and rename into place.
+        }
+        const staging = await mkdtemp(
+          path.join(os.tmpdir(), "workbench-java-harness-build-"),
+        );
+        try {
+          const compiled = await runProcess(
+            "javac",
+            [
+              "--release",
+              "21",
+              "-proc:none",
+              "-encoding",
+              "UTF-8",
+              "-d",
+              staging,
+              javaHarnessSource,
+            ],
+            staging,
+            { timeoutMs: 15000 },
+          );
+          if (!compiled.passed) return null;
+          try {
+            await rename(staging, cacheDir);
+            return cacheDir;
+          } catch {
+            // Another process may have populated cacheDir concurrently.
+            await access(classFile);
+            return cacheDir;
+          }
+        } finally {
+          await rm(staging, { recursive: true, force: true });
+        }
+      } catch {
+        return null;
+      }
+    })();
+  }
+  return javaHarnessPromise;
+}
 
 export type Language = "go" | "python" | "typescript" | "java";
 type RunOptions = {
@@ -56,6 +130,7 @@ sys.exit(0 if result.wasSuccessful() else 1)
       args: [
         "--experimental-strip-types",
         "--test",
+        "--test-isolation=none",
         ...files.filter(
           (f) => f.endsWith(".test.ts") || f.endsWith("_test.ts"),
         ),
@@ -67,8 +142,8 @@ sys.exit(0 if result.wasSuccessful() else 1)
       args: [
         "-Xmx128m",
         "-XX:+UseSerialGC",
-        "-XX:ActiveProcessorCount=1",
-        fileURLToPath(new URL("./java/PracticeRunner.java", import.meta.url)),
+        "-XX:TieredStopAtLevel=1",
+        javaHarnessSource,
         ...files.filter((file) => file.endsWith(".java")),
       ],
     };
@@ -160,6 +235,7 @@ export async function runTests(
   await mkdir(runRoot, { recursive: true });
   const snapshot = await mkdtemp(path.join(runRoot, "lld-run-"));
   let containerName: string | undefined;
+  let needsContainerCleanup = false;
   const dockerPrefix = process.env.PRACTICE_DOCKER_CONTEXT
     ? ["--context", process.env.PRACTICE_DOCKER_CONTEXT]
     : [];
@@ -245,6 +321,7 @@ export async function runTests(
           ? [
               "-Xmx128m",
               "-XX:+UseSerialGC",
+              "-XX:TieredStopAtLevel=1",
               "-XX:ActiveProcessorCount=1",
               "-XX:SharedArchiveFile=/opt/workbench/java/classes.jsa",
               "-cp",
@@ -254,13 +331,36 @@ export async function runTests(
             ]
           : selected.args),
       ];
+      needsContainerCleanup = true;
+      const result = await runProcess("docker", args, snapshot, { timeoutMs });
+      // `docker run --rm` removes containers automatically on normal exit;
+      // only force-remove if we killed the client early (timeout or output cap).
+      needsContainerCleanup =
+        result.timedOut ||
+        result.output.endsWith("\nOutput limit reached; run stopped.\n");
       return {
-        ...(await runProcess("docker", args, snapshot, { timeoutMs })),
+        ...result,
         runner: "docker",
       };
     }
+    const nativeArgs =
+      language === "java"
+        ? await (async () => {
+            const harnessDir = await ensureJavaHarness();
+            if (!harnessDir) return selected.args;
+            return [
+              "-Xmx128m",
+              "-XX:+UseSerialGC",
+              "-XX:TieredStopAtLevel=1",
+              "-cp",
+              harnessDir,
+              "PracticeRunner",
+              ...files.filter((file) => file.endsWith(".java")),
+            ];
+          })()
+        : selected.args;
     return {
-      ...(await runProcess(selected.command, selected.args, snapshot, {
+      ...(await runProcess(selected.command, nativeArgs, snapshot, {
         timeoutMs,
         env: {
           GOWORK: "off",
@@ -268,13 +368,14 @@ export async function runTests(
           GOTOOLCHAIN: "local",
           GOFLAGS: "",
           GOENV: "off",
+          CGO_ENABLED: "0",
           PYTHONDONTWRITEBYTECODE: "1",
         },
       })),
       runner: "native",
     };
   } finally {
-    if (containerName)
+    if (containerName && needsContainerCleanup)
       await runProcess(
         "docker",
         [...dockerPrefix, "rm", "-f", containerName],
