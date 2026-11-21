@@ -25,6 +25,7 @@ import {
   Search,
   SquareTerminal,
   Terminal,
+  Trash2,
   X,
   Zap,
 } from "lucide-react";
@@ -234,10 +235,17 @@ function Workspace({
   const [newFilePath, setNewFilePath] = useState("");
   const [newFileError, setNewFileError] = useState("");
   const [creatingFile, setCreatingFile] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [deletingFile, setDeletingFile] = useState(false);
+  const [deleteFileError, setDeleteFileError] = useState("");
   const openNewFile = () => {
     setNewFilePath("");
     setNewFileError("");
     setNewFileOpen(true);
+  };
+  const openDeleteFile = (path: string) => {
+    setDeleteFileError("");
+    setDeleteTarget(path);
   };
   const generation = useRef(0),
     saveGeneration = useRef(0);
@@ -252,6 +260,8 @@ function Workspace({
     setRunning(false);
     setSession(null);
     setFiles([]);
+    setDeleteTarget(null);
+    setDeleteFileError("");
     setError("");
     setRun(null);
     setSeconds(0);
@@ -417,6 +427,36 @@ function Workspace({
       setNewFileError((error as Error).message);
     } finally {
       setCreatingFile(false);
+    }
+  };
+  const deleteFile = async () => {
+    if (!session || !deleteTarget || deletingFile) return;
+    const target = deleteTarget;
+    const gen = generation.current;
+    setDeletingFile(true);
+    setDeleteFileError("");
+    try {
+      await api(`/workspace/${session.sessionId}/delete-file`, {
+        path: target,
+      });
+      if (gen !== generation.current) return;
+      let fallbackPath = "";
+      setFiles((current) => {
+        const next = current.filter((f) => f.path !== target);
+        write(
+          draftKey,
+          next.filter((f) => !f.readOnly),
+        );
+        fallbackPath =
+          next.find((f) => !f.readOnly)?.path || next[0]?.path || "";
+        return next;
+      });
+      setActivePath((current) => (current === target ? fallbackPath : current));
+      setDeleteTarget(null);
+    } catch (error) {
+      setDeleteFileError((error as Error).message);
+    } finally {
+      setDeletingFile(false);
     }
   };
   const activeFile = files.find((f) => f.path === activePath);
@@ -750,22 +790,39 @@ function Workspace({
                 </div>
                 <div className="file-list">
                   {files.map((file) => (
-                    <button
+                    <div
                       className={`file ${file.path === activePath ? "active" : ""}`}
                       key={file.path}
-                      onClick={() => setActivePath(file.path)}
                     >
-                      <FileCode2
-                        size={14}
-                        className={
-                          file.path.includes("test")
-                            ? "test-file"
-                            : "source-file"
-                        }
-                      />
-                      <span>{file.path}</span>
-                      {file.readOnly && <LockKeyhole size={10} />}
-                    </button>
+                      <button
+                        type="button"
+                        className="file-select"
+                        onClick={() => setActivePath(file.path)}
+                      >
+                        <FileCode2
+                          size={14}
+                          className={
+                            file.path.includes("test")
+                              ? "test-file"
+                              : "source-file"
+                          }
+                        />
+                        <span>{file.path}</span>
+                        {file.readOnly && <LockKeyhole size={10} />}
+                      </button>
+                      {file.userCreated && (
+                        <button
+                          type="button"
+                          className="icon-button file-delete"
+                          title={t("Delete {path}", { path: file.path })}
+                          aria-label={t("Delete {path}", { path: file.path })}
+                          disabled={!session || running}
+                          onClick={() => openDeleteFile(file.path)}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      )}
+                    </div>
                   ))}
                 </div>
                 <div className="explorer-tip">
@@ -838,6 +895,18 @@ function Workspace({
                   {activeFile?.readOnly && <LockKeyhole size={11} />}
                 </div>
                 <div className="tab-spacer" />
+                {activeFile?.userCreated && (
+                  <button
+                    type="button"
+                    className="icon-button delete-file-shortcut"
+                    title={t("Delete {path}", { path: activeFile.path })}
+                    aria-label={t("Delete {path}", { path: activeFile.path })}
+                    onClick={() => openDeleteFile(activeFile.path)}
+                    disabled={!session || running}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
                 <button
                   className="icon-button new-file-shortcut"
                   title={t("New file")}
@@ -1267,6 +1336,53 @@ function Workspace({
               </button>
             </div>
           </form>
+        </div>
+      )}
+      {deleteTarget && (
+        <div
+          className="modal-backdrop"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !deletingFile)
+              setDeleteTarget(null);
+          }}
+        >
+          <section
+            className="confirm-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label={t("Remove file")}
+          >
+            <Trash2 size={25} />
+            <h2>{t("Remove file?")}</h2>
+            <p>
+              {t("This permanently deletes {path} from your workspace.", {
+                path: deleteTarget,
+              })}
+            </p>
+            {deleteFileError && (
+              <p className="file-error" role="alert">
+                {t(deleteFileError)}
+              </p>
+            )}
+            <div className="dialog-actions">
+              <button
+                type="button"
+                className="secondary"
+                disabled={deletingFile}
+                onClick={() => setDeleteTarget(null)}
+              >
+                {t("Cancel")}
+              </button>
+              <button
+                type="button"
+                className="primary"
+                disabled={deletingFile}
+                onClick={() => void deleteFile()}
+              >
+                {deletingFile ? t("Removing…") : t("Remove file")}
+              </button>
+            </div>
+          </section>
         </div>
       )}
       {resetConfirm && (

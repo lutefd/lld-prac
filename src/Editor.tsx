@@ -129,11 +129,22 @@ export default function Editor({
     });
   }, [editorFontSize, editorFontFamily]);
 
-  // Reconcile models before selecting the active file, so newly created files
-  // open immediately without resetting the editor or the language-server session.
+  // Reconcile models before selecting the active file, so newly created or removed
+  // files update immediately without resetting the editor or the language-server session.
   useEffect(() => {
     const service = languageService.current;
     if (!service) return;
+    const currentPaths = new Set(files.map((file) => file.path));
+    for (const [path, model] of models.current) {
+      if (currentPaths.has(path)) continue;
+      listeners.current.get(path)?.dispose();
+      listeners.current.delete(path);
+      service.close(model);
+      if (editor.current?.getModel() === model) editor.current.setModel(null);
+      model.dispose();
+      models.current.delete(path);
+      savedViews.current.delete(path);
+    }
     for (const file of files) {
       const existing = models.current.get(file.path);
       if (existing) {

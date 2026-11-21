@@ -56,6 +56,16 @@ export const uiTranslations: Record<string, string> = {
     "Sem preenchimento automático por IA. Recursos completos da linguagem.",
   "Create file": "Criar arquivo",
   "File path": "Caminho do arquivo",
+  "Delete {path}": "Remover {path}",
+  "Remove file?": "Remover arquivo?",
+  "Remove file": "Remover arquivo",
+  "Removing…": "Removendo…",
+  "This permanently deletes {path} from your workspace.":
+    "Isso remove permanentemente {path} do seu ambiente.",
+  "Only added files can be removed":
+    "Somente arquivos adicionados podem ser removidos",
+  "Tests are already queued or running":
+    "Os testes já estão na fila ou em execução",
   Cancel: "Cancelar",
   "Start with a clean slate?": "Começar do zero?",
   "Keep practicing": "Continuar praticando",

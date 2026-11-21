@@ -82,3 +82,26 @@ test("invalid file paths show an error without creating a file", async ({
   await expect(dialog.getByRole("alert")).toBeVisible();
   await expect(page.locator(".file-list")).not.toContainText("escape.go");
 });
+
+test("added files can be removed and stay removed after reload", async ({
+  page,
+}) => {
+  await expect(
+    page.getByRole("button", { name: "Delete implementation.go", exact: true }),
+  ).toHaveCount(0);
+  await createFile(page, "temp_helper.go");
+  await expect(page.locator(".file-list")).toContainText("temp_helper.go");
+  await page
+    .getByRole("button", { name: "Delete temp_helper.go", exact: true })
+    .click();
+  const dialog = page.getByRole("dialog", { name: "Remove file", exact: true });
+  await expect(dialog).toBeVisible();
+  await dialog
+    .getByRole("button", { name: "Remove file", exact: true })
+    .click();
+  await expect(dialog).not.toBeVisible();
+  await expect(page.locator(".file-list")).not.toContainText("temp_helper.go");
+  await expect(page.locator(".active-tab")).toContainText("implementation.go");
+  await page.reload();
+  await expect(page.locator(".file-list")).not.toContainText("temp_helper.go");
+});

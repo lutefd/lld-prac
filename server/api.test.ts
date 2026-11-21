@@ -207,6 +207,40 @@ test("API rejects external origins and hides test sources from problem metadata 
       ).status,
       400,
     );
+    assert.equal(
+      (
+        await post(`/api/workspace/${workspace.sessionId}/delete-file`, {
+          path: "implementation.go",
+        })
+      ).status,
+      400,
+    );
+    assert.equal(
+      (
+        await post(`/api/workspace/${workspace.sessionId}/delete-file`, {
+          path: "go.mod",
+        })
+      ).status,
+      400,
+    );
+    const deleteResponse = await post(
+      `/api/workspace/${workspace.sessionId}/delete-file`,
+      { path: file.path },
+    );
+    assert.equal(deleteResponse.status, 200);
+    await assert.rejects(
+      readFile(path.join(fileURLToPath(workspace.rootUri), file.path), "utf8"),
+      { code: "ENOENT" },
+    );
+    assert.equal(
+      (
+        await post(`/api/workspace/${workspace.sessionId}/create-file`, {
+          path: file.path,
+          content: "package models\n// recreated\n",
+        })
+      ).status,
+      201,
+    );
   } finally {
     app.close();
     await new Promise<void>((resolve) => server.close(() => resolve()));

@@ -644,21 +644,44 @@ h1 {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 9px 12px 9px 29px;
+  gap: 4px;
+  padding: 0 6px 0 0;
   font-size: 12px;
   color: #a7aebb;
-  text-align: left;
   border-left: 2px solid transparent;
   white-space: nowrap;
 }
-.file span {
+.file-select {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 6px 9px 24px;
+  text-align: left;
+  color: inherit;
+}
+.file-select span {
   overflow: hidden;
   text-overflow: ellipsis;
   flex: 1;
 }
-.file svg {
+.file-select svg {
   flex-shrink: 0;
+}
+.file-delete {
+  width: 24px;
+  height: 24px;
+  opacity: 0.65;
+}
+.file:hover .file-delete,
+.file.active .file-delete,
+.file-delete:focus-visible {
+  opacity: 1;
+}
+.file-delete:hover:not(:disabled) {
+  color: #e6a090;
+  background: #352424;
 }
 .file .source-file {
   color: #77afb4;
@@ -1190,6 +1213,9 @@ h1 {
   line-height: 1.7;
   color: #9ca7b5;
 }
+.confirm-modal .file-error {
+  color: #e6a090;
+}
 .confirm-modal > div {
   display: flex;
   gap: 10px;
@@ -1230,8 +1256,10 @@ h1 {
     width: 175px;
   }
   .file {
-    padding-left: 15px;
     font-size: 12px;
+  }
+  .file-select {
+    padding-left: 14px;
   }
   .timer-label,
   .distraction-free {
@@ -1699,12 +1727,18 @@ h1 {
 .explorer .panel-heading {
   padding-right: 8px;
 }
-.new-file-shortcut {
+.new-file-shortcut,
+.delete-file-shortcut {
   display: none;
-  margin-right: 7px;
+  margin-right: 4px;
 }
-.explorer-hidden .new-file-shortcut {
+.explorer-hidden .new-file-shortcut,
+.explorer-hidden .delete-file-shortcut {
   display: inline-flex;
+}
+.delete-file-shortcut:hover:not(:disabled) {
+  color: #e6a090;
+  background: #352424;
 }
 .create-file-modal {
   width: min(440px, 100%);
@@ -1738,7 +1772,8 @@ h1 {
   margin-top: 25px;
 }
 @media (max-width: 850px) {
-  .new-file-shortcut {
+  .new-file-shortcut,
+  .delete-file-shortcut {
     display: inline-flex;
   }
 }
@@ -1903,6 +1938,11 @@ h1 {
   :is(.icon-button:hover, .file:hover:not(.active), .exercise-card:hover) {
   background: #e8edf2;
 }
+:root[data-theme="light"]
+  :is(.file-delete, .delete-file-shortcut):hover:not(:disabled) {
+  color: #a13f37;
+  background: #fbe6e3;
+}
 :root[data-theme="light"] .language-select select option {
   background: #fff;
   color: #29333f;
@@ -2008,6 +2048,7 @@ h1 {
     .result-banner.fail,
     .error-output,
     .editor-loading p,
+    .confirm-modal .file-error,
     .create-file-modal .file-error,
     .console-collapsed .fail
   ) {
