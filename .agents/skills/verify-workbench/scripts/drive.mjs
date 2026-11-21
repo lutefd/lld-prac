@@ -1,11 +1,15 @@
 // Usage: node .agents/skills/verify-workbench/scripts/drive.mjs run-tests [exercise] [language]
-// Drives the real UI in headless Chromium against http://127.0.0.1:5173 and writes proof to test-results/verify/.
+// Drives the real UI in headless Chromium against the launched instance (ports from .practice/verify-run/env) and writes proof to test-results/verify/.
 import { createRequire } from "node:module";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 const root = path.resolve(import.meta.dirname, "../../../..");
 const { chromium } = createRequire(path.join(root, "package.json"))("@playwright/test");
 const [, , action = "run-tests", exercise = "ride-dispatch", language = "go"] = process.argv;
+const envFile = path.join(root, ".practice/verify-run/env");
+if (existsSync(envFile))
+  for (const m of readFileSync(envFile, "utf8").matchAll(/(PRACTICE_\w+)=(\d+)/g)) process.env[m[1]] ??= m[2];
+const web = `http://127.0.0.1:${process.env.PRACTICE_WEB_PORT || 5173}`;
 const out = path.join(root, "test-results/verify", `${action}-${exercise}-${language}`);
 mkdirSync(out, { recursive: true });
 const browser = await chromium.launch();
@@ -14,7 +18,7 @@ const log = [];
 page.on("request", (r) => r.url().includes("/api/") && log.push(`${r.method()} ${new URL(r.url()).pathname}`));
 try {
   if (action !== "run-tests") throw new Error(`unknown action ${action}`);
-  await page.goto(`http://127.0.0.1:5173/practice/${exercise}`);
+  await page.goto(`${web}/practice/${exercise}`);
   await page.locator(".monaco-editor").waitFor();
   if (language !== "go") await page.getByLabel("Programming language").selectOption(language);
   await page.getByRole("heading", { level: 1 }).first().waitFor();
