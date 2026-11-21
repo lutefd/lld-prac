@@ -278,3 +278,20 @@ test("TypeScript command disables per-file process isolation for faster test run
     "hidden_level_1.test.ts",
   ]);
 });
+
+test("Go command targets current package for flat workspaces and ./... for nested packages", () => {
+  const flat = commandFor("go", [
+    "go.mod",
+    "implementation.go",
+    "level_1_test.go",
+  ]);
+  assert.equal(flat.command, "go");
+  assert.equal(flat.args.at(-1), ".");
+  const nested = commandFor("go", [
+    "go.mod",
+    "implementation.go",
+    "models/value.go",
+    "level_1_test.go",
+  ]);
+  assert.equal(nested.args.at(-1), "./...");
+});

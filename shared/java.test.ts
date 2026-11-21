@@ -1,11 +1,34 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { availableParallelism, tmpdir } from "node:os";
 import path from "node:path";
 import { problems } from "./problems.ts";
 import { getFiles } from "./languages.ts";
+
+function runCommand(
+  command: string,
+  args: string[],
+  cwd: string,
+): Promise<{ status: number | null; stdout: string; stderr: string }> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      cwd,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (chunk: Buffer) => {
+      stdout += chunk.toString();
+    });
+    child.stderr.on("data", (chunk: Buffer) => {
+      stderr += chunk.toString();
+    });
+    child.on("error", reject);
+    child.on("close", (status) => resolve({ status, stdout, stderr }));
+  });
+}
 
 test("Java contracts preserve typed tuple access, arrays, entry fields, and defensive-copy mutations", () => {
   const files = (id: string) => {
@@ -56,49 +79,61 @@ test(
   async () => {
     const root = await mkdtemp(path.join(tmpdir(), "lld-java-catalog-"));
     try {
-      for (const problem of problems) {
-        const dir = path.join(root, problem.id);
-        await mkdir(dir);
-        const files = getFiles(problem, "java");
-        await Promise.all(
-          files.map((f) => writeFile(path.join(dir, f.path), f.content)),
-        );
-        const compiled = spawnSync(
-          "javac",
-          ["--release", "21", ...files.map((f) => f.path)],
-          { cwd: dir, encoding: "utf8" },
-        );
-        assert.equal(
-          compiled.status,
-          0,
-          `${problem.id}: ${compiled.stdout}${compiled.stderr}`,
-        );
-        for (let level = 1; level <= 3; level++) {
-          const result = spawnSync("java", [`Level${level}Test`], {
-            cwd: dir,
-            encoding: "utf8",
-          });
-          assert.equal(
-            result.status,
-            1,
-            `${problem.id} level ${level} must fail`,
-          );
-          assert.match(
-            result.stderr,
-            /AssertionError/,
-            `${problem.id}: ${result.stderr}`,
-          );
-          assert.doesNotMatch(
-            result.stderr,
-            /Exception in thread.*(?:NullPointer|ArrayIndexOutOfBounds|ClassNotFound)/,
-          );
-        }
-        const sandbox = spawnSync("java", ["SandboxTest"], {
-          cwd: dir,
-          encoding: "utf8",
-        });
-        assert.equal(sandbox.status, 0, `${problem.id}: ${sandbox.stderr}`);
-      }
+      let cursor = 0;
+      const workers = Array.from(
+        {
+          length: Math.min(problems.length, Math.max(2, availableParallelism())),
+        },
+        async () => {
+          while (cursor < problems.length) {
+            const problem = problems[cursor++];
+            const dir = path.join(root, problem.id);
+            await mkdir(dir);
+            const files = getFiles(problem, "java");
+            await Promise.all(
+              files.map((f) => writeFile(path.join(dir, f.path), f.content)),
+            );
+            const compiled = await runCommand(
+              "javac",
+              ["--release", "21", "-proc:none", ...files.map((f) => f.path)],
+              dir,
+            );
+            assert.equal(
+              compiled.status,
+              0,
+              `${problem.id}: ${compiled.stdout}${compiled.stderr}`,
+            );
+            for (let level = 1; level <= 3; level++) {
+              const result = await runCommand(
+                "java",
+                ["-XX:TieredStopAtLevel=1", `Level${level}Test`],
+                dir,
+              );
+              assert.equal(
+                result.status,
+                1,
+                `${problem.id} level ${level} must fail`,
+              );
+              assert.match(
+                result.stderr,
+                /AssertionError/,
+                `${problem.id}: ${result.stderr}`,
+              );
+              assert.doesNotMatch(
+                result.stderr,
+                /Exception in thread.*(?:NullPointer|ArrayIndexOutOfBounds|ClassNotFound)/,
+              );
+            }
+            const sandbox = await runCommand(
+              "java",
+              ["-XX:TieredStopAtLevel=1", "SandboxTest"],
+              dir,
+            );
+            assert.equal(sandbox.status, 0, `${problem.id}: ${sandbox.stderr}`);
+          }
+        },
+      );
+      await Promise.all(workers);
     } finally {
       await rm(root, { recursive: true, force: true });
     }

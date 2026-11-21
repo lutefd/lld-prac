@@ -93,11 +93,21 @@ export type RunResult = {
   runner?: string;
 };
 export function commandFor(language: Language, files: string[]) {
-  if (language === "go")
+  if (language === "go") {
+    const hasNestedGo = files.some(
+      (f) => f.endsWith(".go") && f.includes("/"),
+    );
     return {
       command: "go",
-      args: ["test", "-v", "-count=1", "-timeout=12s", "./..."],
+      args: [
+        "test",
+        "-v",
+        "-count=1",
+        "-timeout=12s",
+        hasNestedGo ? "./..." : ".",
+      ],
     };
+  }
   if (language === "python")
     return {
       command: "python3",
