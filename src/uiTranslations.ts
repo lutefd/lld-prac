@@ -148,8 +148,10 @@ export const uiTranslations: Record<string, string> = {
   "Exit focus mode": "Sair do modo de foco",
   "Enter focus mode": "Entrar no modo de foco",
   "Reset this language's solution": "Reiniciar a solução nesta linguagem",
-  "Queued or running…": "Na fila ou executando…",
   "Run tests": "Executar testes",
+  Submit: "Enviar",
+  "Check this level and record an attempt":
+    "Verificar este nível e registrar uma tentativa",
   "Collapse requirements": "Recolher requisitos",
   "Resize requirements": "Redimensionar requisitos",
   "New file": "Novo arquivo",
@@ -168,6 +170,10 @@ export const uiTranslations: Record<string, string> = {
   "Clear output": "Limpar saída",
   "All checks passed": "Todas as verificações passaram",
   "Some checks didn’t pass": "Algumas verificações falharam",
+  "Checks passed. Submit to complete this level.":
+    "As verificações passaram. Envie a solução para concluir este nível.",
+  "Submission passed": "Solução enviada e aprovada",
+  "Submission didn’t pass": "Solução enviada e reprovada",
   "(Runner returned no output)": "(A execução não retornou saída)",
   "Read only": "Somente leitura",
   Editable: "Editável",
@@ -236,6 +242,8 @@ export const uiTranslations: Record<string, string> = {
     "O ambiente expirou; reabra o exercício",
   "Tests are already running": "Os testes já estão em execução",
   "Invalid level": "Nível inválido",
+  "Pass the previous level before submitting this one.":
+    "Conclua o nível anterior antes de enviar este.",
   "Language server unavailable; install it and restart the app":
     "Servidor de linguagem indisponível; instale-o e reinicie o aplicativo",
   "Files must be an array": "Os arquivos devem estar em uma lista",

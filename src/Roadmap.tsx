@@ -141,7 +141,7 @@ export default function Roadmap({ problems }: { problems: RoadmapProblem[] }) {
         <strong>{t("Make each case count")}</strong>
         <p>
           {t(
-            "Read one level. List its invariants and try a simple design. Add your own boundary tests, then run the supplied checks. After passing, explain your tradeoffs and revisit the case later without your old solution. Leave the timer off while learning; use it on a second attempt.",
+            "Read one level. List its invariants and try a simple design. Add your own boundary tests and click Run tests. When the checks pass, click Submit to complete the level. Explain your tradeoffs and revisit the case later without your old solution. Leave the timer off while learning and use it when you revisit the case.",
           )}
         </p>
       </aside>

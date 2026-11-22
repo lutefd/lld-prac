@@ -1,8 +1,14 @@
 import { test, expect } from "@playwright/test";
 import { createAccount } from "./auth";
 
-for (const outcome of ["pass", "failure", "timeout", "server error"] as const) {
-  test(`languages and drafts remain available during a pending run and after ${outcome}`, async ({
+for (const [action, outcome] of [
+  ["run", "pass"],
+  ["run", "failure"],
+  ["run", "timeout"],
+  ["run", "server error"],
+  ["submit", "pass"],
+] as const) {
+  test(`languages and drafts remain available during a pending ${action} and after ${outcome}`, async ({
     page,
   }) => {
     const goDraft = "package practice\n// Preserve my Go draft.\n";
@@ -27,7 +33,7 @@ for (const outcome of ["pass", "failure", "timeout", "server error"] as const) {
     let started!: () => void;
     const blocked = new Promise<void>((resolve) => (release = resolve));
     const entered = new Promise<void>((resolve) => (started = resolve));
-    const output = `Original Go run: ${outcome}`;
+    const output = `Original Go ${action}: ${outcome}`;
     const sessions = new Set<string>();
     page.on("response", async (response) => {
       if (
@@ -38,7 +44,7 @@ for (const outcome of ["pass", "failure", "timeout", "server error"] as const) {
         sessions.add((await response.json()).sessionId);
       }
     });
-    await page.route("**/api/workspace/*/run", async (route) => {
+    await page.route(`**/api/workspace/*/${action}`, async (route) => {
       started();
       await blocked;
       await route.fulfill({
@@ -51,24 +57,27 @@ for (const outcome of ["pass", "failure", "timeout", "server error"] as const) {
                 timedOut: outcome === "timeout",
                 output,
                 durationMs: 100,
-                unlocked: outcome === "pass" ? 2 : 1,
+                unlocked: action === "submit" && outcome === "pass" ? 2 : 1,
               },
       });
     });
     try {
       await page.goto("/practice/ride-dispatch");
       const selector = page.getByLabel("Programming language");
-      const run = page.locator(".run-button");
-      await expect(run).toBeEnabled();
-      await run.click();
+      const button = page.getByRole("button", {
+        name: action === "submit" ? "Submit" : "Run tests",
+        exact: true,
+      });
+      await expect(button).toBeEnabled();
+      await button.click();
       await entered;
-      await expect(run).toBeDisabled();
+      await expect(button).toBeDisabled();
       await expect(selector).toBeEnabled();
       await selector.selectOption("python");
       await expect(page.locator(".monaco-editor")).toContainText(
         "Preserve my Python draft",
       );
-      await expect(run).toBeEnabled();
+      await expect(button).toBeEnabled();
       release();
       await expect(page.locator(".raw-output")).toHaveCount(0);
       await expect(
@@ -78,15 +87,15 @@ for (const outcome of ["pass", "failure", "timeout", "server error"] as const) {
       await expect(page.locator(".monaco-editor")).toContainText(
         "Preserve my Go draft",
       );
-      await expect(run).toBeEnabled();
-      await run.click();
+      await expect(button).toBeEnabled();
+      await button.click();
       await expect(page.getByText(output, { exact: true })).toBeVisible();
       await expect(selector).toBeEnabled();
       await selector.selectOption("typescript");
       await expect(page.locator(".file-list")).toContainText(
         "implementation.ts",
       );
-      await expect(run).toBeEnabled();
+      await expect(button).toBeEnabled();
     } finally {
       release();
       await Promise.all(

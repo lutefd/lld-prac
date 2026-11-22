@@ -63,7 +63,7 @@ test("account persists unlocked levels and drafts across reloads, syncs across b
     ).toBeDisabled();
 
     await replaceCode(pageA1, BOUNDED_STACK_LEVEL_1);
-    await pageA1.getByRole("button", { name: "Run tests", exact: false }).click();
+    await pageA1.getByRole("button", { name: "Submit", exact: true }).click();
     await expect(pageA1.locator(".raw-output")).toContainText("PASS", {
       timeout: 30000,
     });
@@ -155,6 +155,10 @@ test("API keys read the progress report and stop working once deleted", async ({
   await expect(page.locator(".raw-output")).toContainText("PASS", {
     timeout: 30000,
   });
+  await page.getByRole("button", { name: "Submit", exact: true }).click();
+  await expect(page.getByText("Submission passed")).toBeVisible({
+    timeout: 30000,
+  });
 
   await page.getByRole("link", { name: "Account", exact: true }).click();
   await expect(page).toHaveURL(/\/account$/);
@@ -182,21 +186,24 @@ test("API keys read the progress report and stop working once deleted", async ({
   });
   expect(reportResponse.status()).toBe(200);
   const report = await reportResponse.json();
-  expect(report.summary.passedAttempts).toBeGreaterThanOrEqual(1);
-  expect(
-    report.attempts.some(
-      (attempt: {
-        problemId: string;
-        language: string;
-        level: number;
-        passed: boolean;
-      }) =>
-        attempt.problemId === "bounded-stack" &&
-        attempt.language === "go" &&
-        attempt.level === 1 &&
-        attempt.passed === true,
-    ),
-  ).toBe(true);
+  expect(report.summary.attempts).toBe(1);
+  expect(report.summary.passedAttempts).toBe(1);
+  expect(report.attempts).toEqual([
+    expect.objectContaining({
+      problemId: "bounded-stack",
+      language: "go",
+      level: 1,
+      passed: true,
+    }),
+  ]);
+  const filteredResponse = await page.request.get("/api/v1/report", {
+    headers: { "x-api-key": key },
+    params: { since: report.attempts[0].createdAt },
+  });
+  expect(filteredResponse.status()).toBe(200);
+  const filtered = await filteredResponse.json();
+  expect(filtered.attempts).toEqual([]);
+  expect(filtered.summary).toEqual(report.summary);
 
   await expect(page.locator(".api-key-list")).toContainText("CI reporter");
   await page

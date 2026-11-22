@@ -54,8 +54,8 @@ export const roadmapTranslations: Record<string, string> = {
   "Continue the path": "Continuar o roadmap",
   "How to practice": "Como praticar",
   "Make each case count": "Aproveite cada exercício",
-  "Read one level. List its invariants and try a simple design. Add your own boundary tests, then run the supplied checks. After passing, explain your tradeoffs and revisit the case later without your old solution. Leave the timer off while learning; use it on a second attempt.":
-    "Leia um nível. Liste suas invariantes e experimente uma solução simples. Adicione seus próprios testes de casos limite e execute as verificações fornecidas. Depois de passar, explique suas decisões e revisite o exercício mais tarde sem a solução anterior. Deixe o cronômetro desligado enquanto aprende; use-o na segunda tentativa.",
+  "Read one level. List its invariants and try a simple design. Add your own boundary tests and click Run tests. When the checks pass, click Submit to complete the level. Explain your tradeoffs and revisit the case later without your old solution. Leave the timer off while learning and use it when you revisit the case.":
+    "Leia um nível. Liste suas invariantes e experimente uma solução simples. Adicione seus próprios testes de casos limite e clique em Executar testes. Quando as verificações passarem, clique em Enviar para concluir o nível. Explique suas decisões e revisite o exercício mais tarde sem a solução anterior. Deixe o cronômetro desligado enquanto aprende e use-o ao revisitar o exercício.",
   Completed: "Concluído",
   levels: "níveis",
   "Build confidence": "Ganhe confiança",
