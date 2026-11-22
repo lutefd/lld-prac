@@ -1,13 +1,15 @@
 # Files
 
-Users create extra source and test files, which run with the suite, persist, and stay scoped to their language.
+Users create and delete extra source and test files, which run with the suite, persist in their server-side draft, and stay scoped to their language.
 
 ## Sub-features
 
 - `files-create` `New file` dialog creates `helper.go` in the active workspace.
 - `files-run` extra files compile with and run alongside supplied tests.
 - `files-persist` files remain after reload.
-- `files-scope` files do not appear after switching language.
+- `files-scope` files do not appear after switching language, and return when switching back.
+- `files-validate` an unsafe path such as `../escape.go` shows an alert in `Create file` and creates nothing.
+- `files-delete` `Delete <path>` exists only for user-created files; confirming `Remove file` removes it, also after reload.
 
 ## How to get to it (user POV)
 
@@ -17,8 +19,8 @@ Users create extra source and test files, which run with the suite, persist, and
 
 Preconditions: doctor exits 0.
 
-- **Create, run, persist, scope.** Run `npx playwright test tests/e2e/files.spec.ts`. It creates `helper.go` and `helper_test.go`, runs tests expecting `ADDITIONAL_FILE_OUTPUT`, reloads and expects both in `.file-list`, then switches to Python.
-- **Side effect check.** Before cleanup, `ls .practice/verify-run/workspaces/*/` shows the created files.
+- **Create, run, persist, scope, validate, delete.** Run `npx playwright test tests/e2e/files.spec.ts`. It creates `helper.go` and `helper_test.go`, runs tests expecting `ADDITIONAL_FILE_OUTPUT`, reloads and expects both in `.file-list`, switches to Python and back, rejects `../escape.go`, and deletes `temp_helper.go`.
+- **Side effect check.** While the workspace page is open, `ls .practice/verify-run/workspaces/*/` shows the created files. The directory is deleted when the user leaves the exercise; durable state is the `practice_draft` row in `.practice/verify-run/workbench.db`, proven by the file returning after reload.
 
 ## Gotchas
 

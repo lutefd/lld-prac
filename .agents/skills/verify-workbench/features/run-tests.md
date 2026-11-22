@@ -1,17 +1,19 @@
 # Run tests
 
-A user edits code in Monaco, clicks **Run tests**, and sees real runner output; passing cumulative checks unlocks the next level and drafts survive reload.
+A signed-in user edits code in Monaco, clicks **Run tests**, and sees real runner output; passing cumulative checks unlocks the next level. The server records every completed run as an attempt and keeps the draft per user, exercise, and language, so both survive reload and other devices.
 
 ## Sub-features
 
 - `run-fail-starter` unmodified starter fails level 1 with real output.
 - `run-personal-test` a user test in `sandbox_test.go` runs and its log output appears.
 - `run-unlock` passing level 1 enables the `Level 2` button.
-- `run-draft-restore` edited code survives a reload.
+- `run-draft-restore` edited code survives a reload (autosave after 300ms of no typing, flushed before runs, navigation, sign-out, and page close).
+- `run-results` the `Test results` tab shows `All checks passed` and `Continue to level N` after a passing non-final level.
+- `run-reset` Settings, `Reset this language's solution`, confirm `Reset solution`: restores starter files and relocks to level 1 (deletes the server draft and attempts for that language).
 
 ## How to get to it (user POV)
 
-- Open `/practice/<slug>` (e.g. `/practice/ride-dispatch`) and click `Run tests`, or press `ControlOrMeta+Enter`.
+- Sign in, open `/practice/<slug>` (e.g. `/practice/ride-dispatch`), and click `Run tests`, or press `ControlOrMeta+Enter`.
 - Pick the language with the `Programming language` select.
 
 ## Driving it with Playwright
@@ -28,3 +30,4 @@ Preconditions: doctor exits 0; language runtime present (Go by default).
 - Java reports unreachable when `/api/health` shows `java.runtime:false`.
 - `drive.mjs` proves only the failing-starter path; use the spec for the pass path.
 - Hidden test source must not appear in `.file-list`.
+- While a run is queued or running the button reads `Queued or running…`, the editor and file controls lock, and the API answers 409 to saves.

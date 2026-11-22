@@ -5,7 +5,8 @@ Maintained source for verifying user-facing behavior of Workbench. Read this ind
 ## Baseline preconditions
 
 - Instance started by `scripts/launch.sh`; `scripts/doctor.sh` exits 0.
-- Fresh browser context (empty localStorage) at `http://127.0.0.1:5173`.
+- Fresh browser context (empty localStorage) at the UI port `launch.sh` printed (`PRACTICE_WEB_PORT` in `.practice/verify-run/env`; it is not 5173).
+- Every route is behind sign-in: sign up a fresh user first (`createAccount` in `tests/e2e/auth.ts`, or `drive.mjs`, which does it for you).
 - Never drive an instance this run did not start.
 
 ## Driving conventions
@@ -14,6 +15,7 @@ Maintained source for verifying user-facing behavior of Workbench. Read this ind
 - Wait on UI state (`.raw-output` text, headings), never fixed sleeps. Test runs can take up to 30s.
 - Monaco edits: click `.monaco-editor`, `ControlOrMeta+a`, `keyboard.insertText`.
 - Existing specs in `tests/e2e/` cover each feature; run them for regression, use `drive.mjs` for proof artifacts.
+- Every `npx playwright test ...` below assumes `. .practice/verify-run/env` was sourced first, so Playwright reuses the launched instance instead of starting its own on 5173.
 
 ## Proof and skip reporting
 

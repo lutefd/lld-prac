@@ -11,7 +11,8 @@ The home page lists all 44 exercises in recommended order with per-language prog
 
 ## How to get to it (user POV)
 
-- Open `/`, or click the `Practice roadmap` link from any exercise.
+- Sign in and open `/` (or `/roadmap`), or click `Practice roadmap` in the practice toolbar, its Settings `Workspace` section, or the `Exercise not found` page.
+- The nav shows `Start practicing`, then `Resume practice` once an exercise was opened, plus `Account` and `Settings`.
 
 ## Driving it with Playwright
 
@@ -23,3 +24,5 @@ Preconditions: doctor exits 0; signed-in user.
 
 - Progress comes from `GET /api/progress` for the signed-in user; each test signs up a fresh user.
 - Count is `.roadmap-exercises li`, not link count.
+- `Roadmap language` is stored in localStorage and becomes the practice page's `Programming language`.
+- `/api/import` only writes for an account with no attempts and no drafts; otherwise it returns `{ imported: false }`. Seed progress on a fresh user.

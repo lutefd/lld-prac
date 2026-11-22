@@ -9,6 +9,8 @@ Users sign in with email and password; attempts, unlocked levels, and code draft
 - `account-api-keys` users create and delete API keys on `/account`; the full key and curl snippet appear once on creation and authenticate `GET /api/v1/report`.
 - `account-legacy-import` pre-existing `workbench.progress.*` and `workbench.draft.*` localStorage entries import once on first sign-in and are cleared from the browser.
 - `account-signout` signing out from `/account` returns to the sign-in screen (and leaving a workspace via the Account link flushes pending edits first).
+- `account-back-link` `/account` shows `Back to practice` when opened from an exercise, `Back to roadmap` on direct load or reload.
+- `account-signup-rules` sign-up needs a name and an 8+ character password; with `PRACTICE_DISABLE_SIGNUP=true` it shows `New account registration is disabled on this server.`
 
 ## How to get to it (user POV)
 
@@ -23,6 +25,10 @@ Preconditions: doctor exits 0.
 - **Shared helper.** Other specs call `createAccount(page)` from `tests/e2e/auth.ts` before navigating.
 
 ## Gotchas
+
+- `launch.sh` passes its environment through: `PRACTICE_DISABLE_SIGNUP=true .agents/skills/verify-workbench/scripts/launch.sh` drives the disabled sign-up path (no user can be created in that instance).
+- `GET /api/v1/report` takes `?limit=` (default 100, clamped 1..1000); API keys are rate limited to 120 requests a minute.
+- `/api/import` writes nothing for an account that already has attempts or drafts; it still answers 200 `{ imported: false }`, and the browser clears its legacy keys either way.
 
 - `launch.sh` isolates SQLite in `.practice/verify-run/workbench.db`; clean up between runs if testing from an empty database.
 - API keys are shown only once on creation; deleting a key immediately returns `401` on `/api/v1/report`.
