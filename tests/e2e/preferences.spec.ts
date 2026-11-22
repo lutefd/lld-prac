@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { createAccount } from "./auth";
 
 async function openSettings(page: import("@playwright/test").Page, label = "Settings") {
   await page.getByRole("button", { name: label, exact: true }).click();
@@ -13,6 +14,7 @@ test("browser locale and system theme are defaults; overrides persist without re
     colorScheme: "light",
   });
   const page = await context.newPage();
+  await createAccount(page);
   await page.goto("/");
   await expect(page.locator("html")).toHaveAttribute("lang", "pt-BR");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
@@ -107,6 +109,7 @@ test("system theme follows changes and unsupported browser languages fall back t
     colorScheme: "dark",
   });
   const page = await context.newPage();
+  await createAccount(page);
   await page.goto("/");
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
@@ -136,6 +139,7 @@ test("system theme follows changes and unsupported browser languages fall back t
 test("editor theme, font, font size, and interface text size can be configured and persist", async ({
   page,
 }) => {
+  await createAccount(page);
   await page.goto("/practice/bounded-stack");
   await expect(page.locator(".monaco-editor")).toBeVisible();
   const dialog = await openSettings(page);

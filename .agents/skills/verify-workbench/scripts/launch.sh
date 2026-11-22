@@ -10,9 +10,9 @@ fi
 free_port() { node -e 'const s=require("net").createServer().listen(0,"127.0.0.1",()=>{console.log(s.address().port);s.close()})'; }
 WEB=$(free_port); API=$(free_port)
 rm -rf "$RUN"; mkdir -p "$RUN/workspaces"
-printf 'export PRACTICE_WEB_PORT=%s\nexport PRACTICE_API_PORT=%s\n' "$WEB" "$API" >"$RUN/env"
+printf 'export PRACTICE_WEB_PORT=%s\nexport PRACTICE_API_PORT=%s\nexport PRACTICE_DATABASE_PATH=%s\n' "$WEB" "$API" "$RUN/workbench.db" >"$RUN/env"
 cd "$ROOT"
-PRACTICE_WEB_PORT=$WEB PRACTICE_API_PORT=$API PRACTICE_WORKSPACE_ROOT="$RUN/workspaces" PRACTICE_MAX_WORKSPACES=100 \
+PRACTICE_WEB_PORT=$WEB PRACTICE_API_PORT=$API PRACTICE_WORKSPACE_ROOT="$RUN/workspaces" PRACTICE_DATABASE_PATH="$RUN/workbench.db" PRACTICE_MAX_WORKSPACES=100 \
   nohup node scripts/dev.ts >"$RUN/dev.log" 2>&1 &
 echo $! >"$RUN/pid"
 for i in $(seq 1 60); do

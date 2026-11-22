@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { createAccount } from "./auth";
 
 for (const outcome of ["pass", "failure", "timeout", "server error"] as const) {
   test(`languages and drafts remain available during a pending run and after ${outcome}`, async ({
@@ -6,21 +7,22 @@ for (const outcome of ["pass", "failure", "timeout", "server error"] as const) {
   }) => {
     const goDraft = "package practice\n// Preserve my Go draft.\n";
     const pythonDraft = "# Preserve my Python draft.\n";
-    await page.addInitScript(
-      ({ goDraft, pythonDraft }) => {
-        localStorage.setItem("workbench.language", JSON.stringify("go"));
-        for (const [language, path, content] of [
-          ["go", "implementation.go", goDraft],
-          ["python", "implementation.py", pythonDraft],
-        ]) {
-          localStorage.setItem(
-            `workbench.draft.ride-dispatch.${language}`,
-            JSON.stringify([{ path, content, readOnly: false }]),
-          );
-        }
+    await createAccount(page);
+    const imported = await page.request.post("/api/import", {
+      data: {
+        progress: {},
+        drafts: {
+          "ride-dispatch": {
+            go: [{ path: "implementation.go", content: goDraft }],
+            python: [{ path: "implementation.py", content: pythonDraft }],
+          },
+        },
       },
-      { goDraft, pythonDraft },
-    );
+    });
+    expect(imported.ok()).toBe(true);
+    await page.addInitScript(() => {
+      localStorage.setItem("workbench.language", JSON.stringify("go"));
+    });
     let release!: () => void;
     let started!: () => void;
     const blocked = new Promise<void>((resolve) => (release = resolve));
@@ -49,6 +51,7 @@ for (const outcome of ["pass", "failure", "timeout", "server error"] as const) {
                 timedOut: outcome === "timeout",
                 output,
                 durationMs: 100,
+                unlocked: outcome === "pass" ? 2 : 1,
               },
       });
     });

@@ -1,8 +1,14 @@
 import { test, expect } from "@playwright/test";
+import { createAccount } from "./auth";
 
 test("roadmap orders the full catalog, restores progress, and opens the selected language and exercise", async ({
   page,
 }) => {
+  await createAccount(page);
+  const imported = await page.request.post("/api/import", {
+    data: { progress: { "bounded-stack": { python: 4 } }, drafts: {} },
+  });
+  expect(imported.ok()).toBe(true);
   await page.goto("/");
   await expect(
     page.getByRole("heading", { name: "Small steps. Stronger designs." }),
@@ -11,9 +17,6 @@ test("roadmap orders the full catalog, restores progress, and opens the selected
   await expect(page.locator(".roadmap-exercises li").first()).toContainText(
     "Bounded stack",
   );
-  await page.evaluate(() => {
-    localStorage.setItem("workbench.progress.bounded-stack.python", "4");
-  });
   await page.getByLabel("Roadmap language").selectOption("python");
   await expect(page.locator(".roadmap-controls")).toContainText(
     "1 of 44 exercises completed",
@@ -54,6 +57,7 @@ test("roadmap orders the full catalog, restores progress, and opens the selected
 test("exercise URLs take precedence over remembered selections and support reload and browser history", async ({
   page,
 }) => {
+  await createAccount(page);
   await page.addInitScript(() => {
     localStorage.setItem("workbench.problem", JSON.stringify("bounded-stack"));
   });
@@ -93,6 +97,7 @@ test("exercise URLs take precedence over remembered selections and support reloa
 test("unknown exercise links offer a route back to the roadmap", async ({
   page,
 }) => {
+  await createAccount(page);
   await page.goto("/practice/not-a-real-exercise");
   await expect(
     page.getByRole("heading", { name: "Exercise not found" }),
@@ -106,6 +111,7 @@ test("unknown exercise links offer a route back to the roadmap", async ({
 test("new themes expose all difficulty levels and remain usable on mobile", async ({
   page,
 }) => {
+  await createAccount(page);
   await page.goto("/practice/bounded-stack");
   await page.getByRole("button", { name: "Open exercise library" }).click();
   for (const [category, count, perDifficulty] of [

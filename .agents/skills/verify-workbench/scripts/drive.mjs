@@ -19,6 +19,12 @@ page.on("request", (r) => r.url().includes("/api/") && log.push(`${r.method()} $
 try {
   if (action !== "run-tests") throw new Error(`unknown action ${action}`);
   await page.goto(`${web}/practice/${exercise}`);
+  await page.getByRole("button", { name: "Create an account", exact: true }).click();
+  const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  await page.getByLabel("Name", { exact: true }).fill("Verify Driver");
+  await page.getByLabel("Email", { exact: true }).fill(`verify-${suffix}@example.com`);
+  await page.getByLabel("Password", { exact: true }).fill("password-1234");
+  await page.getByRole("button", { name: "Create account", exact: true }).click();
   await page.locator(".monaco-editor").waitFor();
   if (language !== "go") await page.getByLabel("Programming language").selectOption(language);
   await page.getByRole("heading", { level: 1 }).first().waitFor();
