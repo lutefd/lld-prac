@@ -74,23 +74,39 @@ for (const fixture of fixtures) {
     { timeout: 60000 },
     async () => {
       const workspaceRoot = await mkdtemp(path.join(tmpdir(), "lld-lsp-"));
-      const app = createApp({ workspaceRoot, enableLsp: true });
+      const app = createApp({
+        workspaceRoot,
+        databasePath: ":memory:",
+        enableLsp: true,
+      });
       const server = app.listen(0, "127.0.0.1");
       await once(server, "listening");
       const address = server.address();
       assert(address && typeof address === "object");
       const base = `http://127.0.0.1:${address.port}`;
+      const origin = "http://127.0.0.1:5173";
+      let cookie = "";
       async function json<T>(route: string, body?: unknown): Promise<T> {
+        const headers: Record<string, string> = {
+          ...(cookie ? { Cookie: cookie } : {}),
+          ...(body === undefined
+            ? {}
+            : { "Content-Type": "application/json", Origin: origin }),
+        };
         const response = await fetch(
           `${base}${route}`,
           body === undefined
-            ? undefined
+            ? { headers }
             : {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers,
                 body: JSON.stringify(body),
               },
         );
+        const setCookies = response.headers.getSetCookie();
+        if (setCookies.length > 0) {
+          cookie = setCookies.map((entry) => entry.split(";")[0]).join("; ");
+        }
         const data = await response.json();
         assert.equal(response.ok, true, `${route}: ${JSON.stringify(data)}`);
         return data as T;
@@ -104,6 +120,11 @@ for (const fixture of fixtures) {
           true,
           `${fixture.language} language server must be installed for this integration suite`,
         );
+        await json("/api/auth/sign-up/email", {
+          email: `lsp-${fixture.language}@example.com`,
+          password: "password-12345",
+          name: "LSP Test",
+        });
         const session = await json<Workspace>("/api/workspace", {
           problemId: "ride-dispatch",
           language: fixture.language,
@@ -150,9 +171,7 @@ for (const fixture of fixtures) {
           /practiceValue|string|str|sample/i,
         );
         type CompletionResult =
-          | Array<{ label: string }>
-          | { items: Array<{ label: string }> }
-          | null;
+          Array<{ label: string }> | { items: Array<{ label: string }> } | null;
         const completion = await eventually<CompletionResult>(
           () =>
             lsp<CompletionResult>("textDocument/completion", {
