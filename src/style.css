@@ -1458,6 +1458,9 @@ h1 {
   .roadmap-shortcut {
     display: none;
   }
+  .problem-heading {
+    gap: 6px;
+  }
   .workspace-toolbar h1,
   .problem-heading h1 {
     max-width: 140px;

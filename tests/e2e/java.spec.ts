@@ -1,12 +1,15 @@
 import { expect, test } from "@playwright/test";
+import { createAccount } from "./auth";
 
 test("Java opens from the roadmap, preserves drafts, and keeps progress scoped to Java", async ({
   page,
 }) => {
-  await page.goto("/");
-  await page.evaluate(() => {
-    localStorage.setItem("workbench.progress.bounded-stack.java", "4");
+  await createAccount(page);
+  const imported = await page.request.post("/api/import", {
+    data: { progress: { "bounded-stack": { java: 4 } }, drafts: {} },
   });
+  expect(imported.ok()).toBe(true);
+  await page.goto("/");
   await page.getByLabel("Roadmap language").selectOption("java");
   await expect(page.locator(".roadmap-controls")).toContainText(
     "1 of 44 exercises completed",
@@ -46,10 +49,32 @@ test("Java opens from the roadmap, preserves drafts, and keeps progress scoped t
   await expect(dialog).not.toBeVisible();
   await expect(page.locator(".active-tab")).toContainText("Helper.java");
 
+  let javaPassed = false;
   await page.route("**/api/workspace/*/run", async (route) => {
+    javaPassed = true;
     await route.fulfill({
-      json: { passed: true, output: "JAVA_TESTS_PASSED", durationMs: 12 },
+      json: {
+        passed: true,
+        output: "JAVA_TESTS_PASSED",
+        durationMs: 12,
+        unlocked: 2,
+      },
     });
+  });
+  await page.route("**/api/workspace", async (route) => {
+    const request = route.request();
+    const response = await route.fetch();
+    if (!javaPassed || request.method() !== "POST") {
+      await route.fulfill({ response });
+      return;
+    }
+    const body = request.postDataJSON() as { language?: string } | null;
+    if (body?.language !== "java") {
+      await route.fulfill({ response });
+      return;
+    }
+    const json = await response.json();
+    await route.fulfill({ response, json: { ...json, unlocked: 2 } });
   });
   await expect(page.locator(".console-empty")).toContainText("javac + java");
   await page.getByRole("button", { name: "Run tests", exact: false }).click();

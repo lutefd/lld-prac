@@ -1,4 +1,5 @@
 import { test, expect, type Locator, type Page } from "@playwright/test";
+import { createAccount } from "./auth";
 
 async function dimensions(locator: Locator) {
   const box = await locator.boundingBox();
@@ -18,6 +19,7 @@ async function drag(page: Page, separator: Locator, dx: number, dy: number) {
 }
 
 test.beforeEach(async ({ page }) => {
+  await createAccount(page);
   await page.goto("/practice/ride-dispatch");
   await expect(page.locator(".monaco-editor")).toBeVisible();
 });

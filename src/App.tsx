@@ -25,17 +25,21 @@ import {
   SquareTerminal,
   Terminal,
   Trash2,
+  UserRound,
   X,
 } from "lucide-react";
 import Editor from "./Editor";
 import PanelDivider from "./PanelDivider";
 import Roadmap from "./Roadmap";
-import { followLink, practiceUrl } from "./navigation";
-import type { CSSProperties } from "react";
+import AccountPage from "./components/AccountPage";
+import AccountProvider from "./components/AccountProvider";
+import { useAccount } from "./lib/account";
+import { followLink, navigateTo, practiceUrl } from "./navigation";
+import type { CSSProperties, MouseEvent } from "react";
+import type { Language } from "../shared/account";
 import { usePreferences, PreferencesControls } from "./preferences";
 import { localizeProblem } from "./problemTranslations";
 
-type Language = "go" | "python" | "typescript" | "java";
 type File = {
   path: string;
   content: string;
@@ -67,6 +71,7 @@ type Run = {
   passed: boolean;
   output: string;
   durationMs: number;
+  unlocked?: number;
   error?: string;
 };
 const languageNames = {
@@ -93,24 +98,32 @@ async function api<T = unknown>(
   path: string,
   body?: unknown,
   signal?: AbortSignal,
+  method?: "GET" | "POST" | "DELETE",
 ): Promise<T> {
-  const response = await fetch(
-    `/api${path}`,
+  const init: RequestInit =
     body === undefined
-      ? { signal }
+      ? { method: method ?? "GET", signal }
       : {
-          method: "POST",
+          method: method ?? "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
           signal,
-        },
-  );
+        };
+  const response = await fetch(`/api${path}`, init);
   const data = await response.json();
   if (!response.ok)
     throw new Error(data.error || `Request failed (${response.status})`);
   return data as T;
 }
 export default function App() {
+  return (
+    <AccountProvider>
+      <AuthenticatedApp />
+    </AccountProvider>
+  );
+}
+function AuthenticatedApp() {
+  const { user } = useAccount();
   const { t, locale } = usePreferences();
   const [route, setRoute] = useState(() => location.pathname);
   useEffect(() => {
@@ -125,6 +138,8 @@ export default function App() {
       .then((data) => setProblems(data.problems))
       .catch((e) => setError(e.message));
   }, []);
+  const pathname = route.replace(/\/+$/, "") || "/";
+  if (pathname === "/account") return <AccountPage key={user.id} />;
   const problems = rawProblems.map((problem) =>
     localizeProblem(problem, locale),
   );
@@ -148,9 +163,8 @@ export default function App() {
         )}
       </div>
     );
-  const pathname = route.replace(/\/+$/, "") || "/";
   if (pathname === "/" || pathname === "/roadmap")
-    return <Roadmap problems={problems} />;
+    return <Roadmap key={user.id} problems={problems} />;
   let problemId = "";
   try {
     const match = pathname.match(/^\/practice\/([^/]+)$/);
@@ -176,7 +190,13 @@ export default function App() {
         </header>
       </main>
     );
-  return <Workspace key={problem.id} problems={problems} problem={problem} />;
+  return (
+    <Workspace
+      key={`${user.id}:${problem.id}`}
+      problems={problems}
+      problem={problem}
+    />
+  );
 }
 function Workspace({
   problems,
@@ -186,6 +206,7 @@ function Workspace({
   problem: Problem;
 }) {
   const { t } = usePreferences();
+  const { registerBeforeSignOut } = useAccount();
   const [language, setLanguage] = useState<Language>(() =>
     read("workbench.language", "go"),
   );
@@ -237,6 +258,7 @@ function Workspace({
   const [timer, setTimer] = useState(false),
     [seconds, setSeconds] = useState(0),
     [resetConfirm, setResetConfirm] = useState(false),
+    [resetting, setResetting] = useState(false),
     [revision, setRevision] = useState(0);
   const [newFileOpen, setNewFileOpen] = useState(false);
   const [newFilePath, setNewFilePath] = useState("");
@@ -257,14 +279,83 @@ function Workspace({
   const generation = useRef(0),
     saveGeneration = useRef(0);
   const runningRequest = useRef<AbortController | null>(null);
-  const draftKey = `workbench.draft.${problem.id}.${language}`;
-  const progressKey = `workbench.progress.${problem.id}.${language}`;
+  const sessionRef = useRef<Session | null>(null);
+  const filesRef = useRef<File[]>([]);
+  const dirtyRef = useRef(false);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inFlightSaveRef = useRef<Promise<void> | null>(null);
+  const flushSave = useCallback(async () => {
+    if (saveTimerRef.current !== null) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    const activeSession = sessionRef.current;
+    if (!activeSession || !dirtyRef.current) {
+      if (inFlightSaveRef.current) {
+        await inFlightSaveRef.current;
+      }
+      return;
+    }
+    const save = ++saveGeneration.current;
+    const editable = filesRef.current.filter((f) => !f.readOnly);
+    const promise = api(`/workspace/${activeSession.sessionId}/files`, {
+      files: editable,
+    })
+      .then(() => {
+        if (save === saveGeneration.current) {
+          dirtyRef.current = false;
+          setSaved(true);
+        }
+      })
+      .catch((e) => {
+        if (save === saveGeneration.current) {
+          setError((e as Error).message);
+        }
+      });
+    inFlightSaveRef.current = promise;
+    try {
+      await promise;
+    } finally {
+      if (inFlightSaveRef.current === promise) {
+        inFlightSaveRef.current = null;
+      }
+    }
+  }, []);
+  useEffect(
+    () => registerBeforeSignOut(flushSave),
+    [registerBeforeSignOut, flushSave],
+  );
+  useEffect(() => {
+    const flushOnUnload = () => {
+      const activeSession = sessionRef.current;
+      if (!activeSession || !dirtyRef.current) return;
+      dirtyRef.current = false;
+      void fetch(`/api/workspace/${activeSession.sessionId}/files`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          files: filesRef.current.filter((f) => !f.readOnly),
+        }),
+        keepalive: true,
+      });
+    };
+    window.addEventListener("pagehide", flushOnUnload);
+    return () => window.removeEventListener("pagehide", flushOnUnload);
+  }, []);
   useEffect(() => {
     write("workbench.problem", problem.id);
     write("workbench.language", language);
     const gen = ++generation.current;
     let cancelled = false;
     let openedId: string | undefined;
+    if (saveTimerRef.current !== null) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    saveGeneration.current++;
+    sessionRef.current = null;
+    filesRef.current = [];
+    dirtyRef.current = false;
     setRunning(false);
     setSession(null);
     setFiles([]);
@@ -275,13 +366,12 @@ function Workspace({
     setSeconds(0);
     setTimer(false);
     setStatus("Connecting");
-    const progress = read(progressKey, 1);
-    setUnlocked(progress);
-    setLevel(Math.min(progress, problem.levels.length));
-    api<Session & { files: File[] }>("/workspace", {
+    setUnlocked(1);
+    setLevel(1);
+    setSaved(true);
+    api<Session & { files: File[]; unlocked: number }>("/workspace", {
       problemId: problem.id,
       language,
-      files: read(draftKey, []),
     })
       .then((data) => {
         openedId = data.sessionId;
@@ -289,8 +379,15 @@ function Workspace({
           void fetch(`/api/workspace/${openedId}`, { method: "DELETE" });
           return;
         }
-        setSession({ ...data, language });
+        const nextSession: Session = { ...data, language };
+        const nextUnlocked = Math.max(1, data.unlocked ?? 1);
+        sessionRef.current = nextSession;
+        filesRef.current = data.files;
+        dirtyRef.current = false;
+        setSession(nextSession);
         setFiles(data.files);
+        setUnlocked(nextUnlocked);
+        setLevel(Math.min(nextUnlocked, problem.levels.length));
         setActivePath(
           data.files.find((f: File) => !f.readOnly)?.path ||
             data.files[0]?.path ||
@@ -308,54 +405,86 @@ function Workspace({
       });
     return () => {
       cancelled = true;
+      if (saveTimerRef.current !== null) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
       runningRequest.current?.abort();
       runningRequest.current = null;
-      if (openedId)
+      if (openedId) {
+        if (sessionRef.current?.sessionId === openedId) {
+          sessionRef.current = null;
+        }
         void fetch(`/api/workspace/${openedId}`, { method: "DELETE" });
+      }
     };
-  }, [
-    problem.id,
-    problem.levels.length,
-    language,
-    revision,
-    draftKey,
-    progressKey,
-  ]);
+  }, [problem.id, problem.levels.length, language, revision]);
   useEffect(() => {
     if (!timer) return;
     const id = setInterval(() => setSeconds((s) => s + 1), 1000);
     return () => clearInterval(id);
   }, [timer]);
-  const change = useCallback(
-    (path: string, content: string) => {
-      setFiles((current) => {
-        const next = current.map((f) =>
-          f.path === path ? { ...f, content } : f,
-        );
-        write(
-          draftKey,
-          next.filter((f) => !f.readOnly),
-        );
-        return next;
-      });
-      setSaved(false);
-    },
-    [draftKey],
-  );
+  const change = useCallback((path: string, content: string) => {
+    setFiles((current) => {
+      const next = current.map((f) =>
+        f.path === path ? { ...f, content } : f,
+      );
+      filesRef.current = next;
+      return next;
+    });
+    dirtyRef.current = true;
+    setSaved(false);
+  }, []);
   useEffect(() => {
     if (!session || saved || running) return;
-    const save = ++saveGeneration.current;
-    const id = setTimeout(() => {
-      api(`/workspace/${session.sessionId}/files`, {
-        files: files.filter((f) => !f.readOnly),
-      })
-        .then(() => {
-          if (save === saveGeneration.current) setSaved(true);
-        })
-        .catch((e) => setError(e.message));
-    }, 650);
-    return () => clearTimeout(id);
-  }, [files, session, saved, running]);
+    if (saveTimerRef.current !== null) {
+      clearTimeout(saveTimerRef.current);
+    }
+    saveTimerRef.current = setTimeout(() => {
+      saveTimerRef.current = null;
+      void flushSave();
+    }, 300);
+    return () => {
+      if (saveTimerRef.current !== null) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+    };
+  }, [files, session, saved, running, flushSave]);
+  const switchLanguage = useCallback(
+    async (nextLanguage: Language) => {
+      if (nextLanguage === language) return;
+      if (!running) {
+        await flushSave();
+      }
+      setLanguage(nextLanguage);
+    },
+    [language, running, flushSave],
+  );
+  const followLinkAfterSave = useCallback(
+    (event: MouseEvent<HTMLAnchorElement>, after?: () => void) => {
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      ) {
+        return;
+      }
+      event.preventDefault();
+      const href = event.currentTarget.href;
+      void (async () => {
+        if (!running) {
+          await flushSave();
+        }
+        after?.();
+        navigateTo(href);
+      })();
+    },
+    [running, flushSave],
+  );
   const runTests = useCallback(async () => {
     if (!session || running) return;
     const gen = generation.current;
@@ -367,17 +496,17 @@ function Workspace({
     setError("");
     setConsoleTab("console");
     try {
+      await flushSave();
+      if (gen !== generation.current) return;
       const result = await api<Run>(
         `/workspace/${session.sessionId}/run`,
-        { level, files: files.filter((f) => !f.readOnly) },
+        { level, files: filesRef.current.filter((f) => !f.readOnly) },
         controller.signal,
       );
       if (gen !== generation.current) return;
       setRun(result);
-      if (result.passed) {
-        const next = Math.min(level + 1, problem.levels.length + 1);
-        setUnlocked((u) => Math.max(u, next));
-        write(progressKey, Math.max(unlocked, next));
+      if (typeof result.unlocked === "number") {
+        setUnlocked(result.unlocked);
       }
     } catch (e) {
       if (gen === generation.current) setError((e as Error).message);
@@ -387,15 +516,7 @@ function Workspace({
         setRunning(false);
       }
     }
-  }, [
-    session,
-    running,
-    level,
-    files,
-    problem.levels.length,
-    progressKey,
-    unlocked,
-  ]);
+  }, [session, running, level, flushSave]);
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
@@ -417,6 +538,8 @@ function Workspace({
     setCreatingFile(true);
     setNewFileError("");
     try {
+      await flushSave();
+      if (gen !== generation.current) return;
       const content =
         language === "go"
           ? "package practice\n\n"
@@ -430,10 +553,7 @@ function Workspace({
       if (gen !== generation.current) return;
       setFiles((current) => {
         const next = [...current, file];
-        write(
-          draftKey,
-          next.filter((f) => !f.readOnly),
-        );
+        filesRef.current = next;
         return next;
       });
       setActivePath(file.path);
@@ -451,6 +571,8 @@ function Workspace({
     setDeletingFile(true);
     setDeleteFileError("");
     try {
+      await flushSave();
+      if (gen !== generation.current) return;
       await api(`/workspace/${session.sessionId}/delete-file`, {
         path: target,
       });
@@ -458,10 +580,7 @@ function Workspace({
       let fallbackPath = "";
       setFiles((current) => {
         const next = current.filter((f) => f.path !== target);
-        write(
-          draftKey,
-          next.filter((f) => !f.readOnly),
-        );
+        filesRef.current = next;
         fallbackPath =
           next.find((f) => !f.readOnly)?.path || next[0]?.path || "";
         return next;
@@ -472,6 +591,34 @@ function Workspace({
       setDeleteFileError((error as Error).message);
     } finally {
       setDeletingFile(false);
+    }
+  };
+  const resetSolution = async () => {
+    if (resetting) return;
+    setResetting(true);
+    try {
+      if (saveTimerRef.current !== null) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+      saveGeneration.current++;
+      dirtyRef.current = false;
+      if (inFlightSaveRef.current) {
+        await inFlightSaveRef.current;
+      }
+      await api(
+        `/practice/${encodeURIComponent(problem.id)}/${encodeURIComponent(language)}`,
+        undefined,
+        undefined,
+        "DELETE",
+      );
+      setResetConfirm(false);
+      setRevision((r) => r + 1);
+    } catch (caught) {
+      setError((caught as Error).message);
+      setResetConfirm(false);
+    } finally {
+      setResetting(false);
     }
   };
   const activeFile = files.find((f) => f.path === activePath);
@@ -517,7 +664,7 @@ function Workspace({
           <a
             className="icon-button roadmap-shortcut"
             href="/"
-            onClick={followLink}
+            onClick={(event) => followLinkAfterSave(event)}
             aria-label={t("Practice roadmap")}
             title={t("Practice roadmap")}
           >
@@ -545,7 +692,7 @@ function Workspace({
             <select
               aria-label={t("Programming language")}
               value={language}
-              onChange={(e) => setLanguage(e.target.value as Language)}
+              onChange={(e) => void switchLanguage(e.target.value as Language)}
             >
               {Object.entries(languageNames).map(([id, name]) => (
                 <option key={id} value={id}>
@@ -555,6 +702,15 @@ function Workspace({
             </select>
             <ChevronDown size={13} />
           </label>
+          <a
+            className="account-trigger"
+            href="/account"
+            onClick={(event) => followLinkAfterSave(event)}
+            aria-label={t("Account")}
+            title={t("Account")}
+          >
+            <UserRound size={16} aria-hidden="true" />
+          </a>
           <PreferencesControls
             extra={(close) => (
               <>
@@ -585,10 +741,7 @@ function Workspace({
                   </button>
                   <a
                     href="/"
-                    onClick={(event) => {
-                      close();
-                      followLink(event);
-                    }}
+                    onClick={(event) => followLinkAfterSave(event, close)}
                   >
                     <MapIcon size={14} />
                     {t("Practice roadmap")}
@@ -1166,7 +1319,9 @@ function Workspace({
                 <a
                   className="roadmap-link library-roadmap-link"
                   href="/"
-                  onClick={followLink}
+                  onClick={(event) =>
+                    followLinkAfterSave(event, () => setLibrary(false))
+                  }
                 >
                   {t("Follow the practice roadmap")} <ArrowUpRight size={14} />
                 </a>
@@ -1221,8 +1376,7 @@ function Workspace({
                       event.preventDefault();
                       return;
                     }
-                    followLink(event);
-                    setLibrary(false);
+                    followLinkAfterSave(event, () => setLibrary(false));
                   }}
                 >
                   <div className="card-top">
@@ -1406,20 +1560,17 @@ function Workspace({
             <div>
               <button
                 className="secondary"
+                disabled={resetting}
                 onClick={() => setResetConfirm(false)}
               >
                 {t("Keep practicing")}
               </button>
               <button
                 className="primary"
-                onClick={() => {
-                  localStorage.removeItem(draftKey);
-                  localStorage.removeItem(progressKey);
-                  setResetConfirm(false);
-                  setRevision((r) => r + 1);
-                }}
+                disabled={resetting}
+                onClick={() => void resetSolution()}
               >
-                {t("Reset solution")}
+                {resetting ? t("Resetting…") : t("Reset solution")}
               </button>
             </div>
           </section>

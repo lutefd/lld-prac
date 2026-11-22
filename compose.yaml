@@ -26,6 +26,10 @@ services:
     environment:
       PRACTICE_HOST: 0.0.0.0
       PRACTICE_ALLOWED_ORIGINS: ${PRACTICE_ALLOWED_ORIGINS:?Set your public URL in .env}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Generate a secret with openssl rand -base64 32 and set it in .env}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-}
+      PRACTICE_DATABASE_PATH: /app/.practice/data/workbench.db
+      PRACTICE_DISABLE_SIGNUP: ${PRACTICE_DISABLE_SIGNUP:-false}
       PRACTICE_RUNNER: docker
       PRACTICE_GO_IMAGE: workbench-go-runner:1.26
       PRACTICE_JAVA_IMAGE: workbench-java-runner:21
@@ -40,6 +44,7 @@ services:
       PRACTICE_WORKSPACE_IDLE_MS: ${PRACTICE_WORKSPACE_IDLE_MS:-3600000}
     volumes:
       - workspaces:/app/.practice/workspaces
+      - data:/app/.practice/data
       - /var/run/docker.sock:/var/run/docker.sock
       # Sibling runner containers must see snapshots at the exact same host path.
       - type: bind
@@ -89,6 +94,7 @@ services:
 
 volumes:
   workspaces:
+  data:
 
 networks:
   app:

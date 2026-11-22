@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { createAccount, replaceCode } from "./auth";
 
 async function createFile(page: Page, path: string) {
   await page.getByRole("button", { name: "New file", exact: true }).click();
@@ -11,13 +12,8 @@ async function createFile(page: Page, path: string) {
   await expect(page.locator(".active-tab")).toContainText(path);
 }
 
-async function replaceCode(page: Page, content: string) {
-  await page.locator(".monaco-editor").click();
-  await page.keyboard.press("ControlOrMeta+a");
-  await page.keyboard.insertText(content);
-}
-
 test.beforeEach(async ({ page }) => {
+  await createAccount(page);
   await page.goto("/practice/ride-dispatch");
   await expect(page.locator(".monaco-editor")).toBeVisible();
 });

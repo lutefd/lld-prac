@@ -1,6 +1,6 @@
 ---
 name: verify-file-paths
-description: Exhaustively checks validateNewFile in server/index.ts, which vets user-created file paths, for path traversal, hidden-test exposure, extension and case-collision bugs. Use whenever validateNewFile, restoreCreatedFiles, or the create-file / delete-file endpoints change, or the allowed file naming rules change.
+description: Exhaustively checks validateNewFile in server/index.ts, which vets user-created file paths, for path traversal, hidden-test exposure, extension and case-collision bugs. Use whenever validateNewFile, restoreCreatedFiles, sanitizeDraftFiles, or the create-file / delete-file / import endpoints change, or the allowed file naming rules change.
 ---
 
 # Verify user-created file paths
@@ -38,8 +38,9 @@ Some rules are defended twice (e.g. backslash is rejected explicitly and by the 
 | --- | --- |
 | `server/index.ts` `validateNewFile` | everything above |
 | `server/index.ts` `restoreCreatedFiles`, `create-file` endpoint | callers only; their use of the result is not modeled |
+| `server/index.ts` `sanitizeDraftFiles` (workspace open from the stored SQLite draft, `POST /api/import` legacy drafts) | callers only, added in `8215bd0`: every user-created path from a stored draft or a browser import passes through `restoreCreatedFiles` → `validateNewFile`, and invalid entries are dropped, not fatal; the dropping is not modeled |
 
-**Last confirmed in sync at commit `9ed82e7`** (main after PR #7). Check drift with `git diff 9ed82e7 -- server/index.ts`. If `validateNewFile` changed, rerun both commands. Move this commit forward only after confirming the oracle still describes the code at the new commit.
+**Last confirmed in sync at commit `9347cc3`** (`validateNewFile` and `restoreCreatedFiles` unchanged since `9ed82e7`). Check drift with `git diff 9347cc3 -- server/index.ts`. If `validateNewFile` changed, rerun both commands. Move this commit forward only after confirming the oracle still describes the code at the new commit.
 
 ## Tool version
 

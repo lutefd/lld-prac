@@ -45,9 +45,9 @@ node .agents/skills/verify-queue/mutants.ts        # proves the check can fail: 
 | Covered code | What |
 | --- | --- |
 | `server/queue.ts` `TestQueue.run`, `drain`, `close`, constructor | everything above |
-| `server/index.ts` `queue.run(...)` (run endpoint), `queue.close()` (shutdown) | callers only; their use of the queue is not modeled |
+| `server/index.ts` `queue.run(...)` (run endpoint), `queue.close()` (shutdown) | callers only; their use of the queue is not modeled. Since `8215bd0` the queued task also awaits `persistDraft` (a SQLite write) before `executeTests`, and `recordAttempt` runs after `queue.run` settles; a throw in either is the modeled "task rejects" event, so the queue model is unchanged |
 
-**Last confirmed in sync at commit `6c4923e`** (queue.ts last changed in `9106ede`). Check drift with `git diff 6c4923e -- server/queue.ts server/index.ts`. If `queue.ts` changed, rerun `check.ts` and `mutants.ts`. Move this commit forward only after you have confirmed the invariants and event list still describe the code at the new commit; update `mutants.ts` if a mutant's text went stale.
+**Last confirmed in sync at commit `9347cc3`** (queue.ts last changed in `9106ede`; run endpoint call site last changed in `8215bd0`). Check drift with `git diff 9347cc3 -- server/queue.ts server/index.ts`. If `queue.ts` changed, rerun `check.ts` and `mutants.ts`. Move this commit forward only after you have confirmed the invariants and event list still describe the code at the new commit; update `mutants.ts` if a mutant's text went stale.
 
 ## Tool version
 
