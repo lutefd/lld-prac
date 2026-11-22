@@ -19,8 +19,10 @@
   "license": "MIT",
   "type": "module",
   "dependencies": {
+    "@better-auth/api-key": "^1.7.27",
     "@fontsource/dm-sans": "^5.3.0",
     "@fontsource/ibm-plex-mono": "^5.3.0",
+    "better-auth": "^1.7.27",
     "express": "^5.3.0",
     "lucide-react": "^1.76.0",
     "monaco-editor": "^0.57.0",
