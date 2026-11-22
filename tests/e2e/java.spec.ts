@@ -50,7 +50,7 @@ test("Java opens from the roadmap, preserves drafts, and keeps progress scoped t
   await expect(page.locator(".active-tab")).toContainText("Helper.java");
 
   let javaPassed = false;
-  await page.route("**/api/workspace/*/run", async (route) => {
+  await page.route("**/api/workspace/*/submit", async (route) => {
     javaPassed = true;
     await route.fulfill({
       json: {
@@ -77,7 +77,7 @@ test("Java opens from the roadmap, preserves drafts, and keeps progress scoped t
     await route.fulfill({ response, json: { ...json, unlocked: 2 } });
   });
   await expect(page.locator(".console-empty")).toContainText("javac + java");
-  await page.getByRole("button", { name: "Run tests", exact: false }).click();
+  await page.getByRole("button", { name: "Submit", exact: true }).click();
   await expect(page.locator(".raw-output")).toContainText("JAVA_TESTS_PASSED");
   await expect(
     page.getByRole("button", { name: "Level 2", exact: true }),

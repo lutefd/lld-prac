@@ -64,8 +64,8 @@ export const uiTranslations: Record<string, string> = {
   "Progress report API": "API do relatório de progresso",
   "Query GET /api/v1/report with an x-api-key header to export your practice history as JSON.":
     "Consulte GET /api/v1/report com o cabeçalho x-api-key para exportar seu histórico de prática em JSON.",
-  "The response includes your account info, an overall summary (attempts, passed attempts, levels passed, started and completed exercises), per-exercise progress by language, and recent attempts (default 100, up to 1000 with ?limit=).":
-    "A resposta inclui os dados da conta, um resumo geral (tentativas, tentativas aprovadas, níveis concluídos, exercícios iniciados e concluídos), o progresso por exercício e linguagem e as tentativas recentes (padrão 100, até 1000 com ?limit=).",
+  "The report includes account info, lifetime totals, progress by exercise and language, and the latest attempts. Use ?since=2026-01-01 to list attempts after midnight UTC on that date. You can also pass an ISO timestamp with a timezone. Use limit to change the number of attempts returned (default 100, max 1000).":
+    "O relatório inclui os dados da conta, os totais acumulados, o progresso por exercício e linguagem e as últimas tentativas. Use ?since=2026-01-01 para listar tentativas após a meia-noite UTC dessa data. Você também pode informar uma data e hora no formato ISO com fuso horário. Use limit para alterar a quantidade de tentativas retornadas (padrão 100, máximo 1000).",
   "API keys can only read this report and cannot open workspaces or run code.":
     "Chaves de API só podem ler este relatório e não podem abrir ambientes nem executar código.",
   "Example request": "Exemplo de requisição",
@@ -148,8 +148,10 @@ export const uiTranslations: Record<string, string> = {
   "Exit focus mode": "Sair do modo de foco",
   "Enter focus mode": "Entrar no modo de foco",
   "Reset this language's solution": "Reiniciar a solução nesta linguagem",
-  "Queued or running…": "Na fila ou executando…",
   "Run tests": "Executar testes",
+  Submit: "Enviar",
+  "Check this level and record an attempt":
+    "Verificar este nível e registrar uma tentativa",
   "Collapse requirements": "Recolher requisitos",
   "Resize requirements": "Redimensionar requisitos",
   "New file": "Novo arquivo",
@@ -168,6 +170,10 @@ export const uiTranslations: Record<string, string> = {
   "Clear output": "Limpar saída",
   "All checks passed": "Todas as verificações passaram",
   "Some checks didn’t pass": "Algumas verificações falharam",
+  "Checks passed. Submit to complete this level.":
+    "As verificações passaram. Envie a solução para concluir este nível.",
+  "Submission passed": "Solução enviada e aprovada",
+  "Submission didn’t pass": "Solução enviada e reprovada",
   "(Runner returned no output)": "(A execução não retornou saída)",
   "Read only": "Somente leitura",
   Editable: "Editável",
@@ -236,6 +242,8 @@ export const uiTranslations: Record<string, string> = {
     "O ambiente expirou; reabra o exercício",
   "Tests are already running": "Os testes já estão em execução",
   "Invalid level": "Nível inválido",
+  "Pass the previous level before submitting this one.":
+    "Conclua o nível anterior antes de enviar este.",
   "Language server unavailable; install it and restart the app":
     "Servidor de linguagem indisponível; instale-o e reinicie o aplicativo",
   "Files must be an array": "Os arquivos devem estar em uma lista",

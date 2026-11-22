@@ -85,6 +85,12 @@ test("browser locale and system theme are defaults; overrides persist without re
   });
   await page.setViewportSize({ width: 375, height: 812 });
   await expect(page.getByRole("button", { name: "Configurações", exact: true })).toBeInViewport();
+  await expect(
+    page.getByRole("button", { name: "Executar testes", exact: true }),
+  ).toBeInViewport();
+  await expect(
+    page.getByRole("button", { name: "Enviar", exact: true }),
+  ).toBeInViewport();
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth),
   ).toBeLessThanOrEqual(375);

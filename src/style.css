@@ -335,28 +335,30 @@ h1 {
   font-size: 13px;
   box-shadow: 0 1px 2px #0002;
 }
-.run-button {
-  padding: 7px 12px;
-  gap: 7px;
-}
-.run-button kbd {
-  margin-left: 8px;
-}
 .primary:hover:not(:disabled) {
   background: #f4b184;
   color: #251c17;
-}
-.primary kbd {
-  font-family: inherit;
-  margin-left: 14px;
-  opacity: 0.6;
-  font-size: 11px;
 }
 .secondary {
   border: 1px solid #414750;
   border-radius: 6px;
   padding: 10px 14px;
   background: #272c33;
+}
+.test-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 12px;
+  gap: 7px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.run-button kbd {
+  font-family: inherit;
+  margin-left: 8px;
+  opacity: 0.6;
+  font-size: 11px;
 }
 .workspace {
   flex: 1;
@@ -1323,7 +1325,7 @@ h1 {
   .requirements-scroll {
     padding: 20px 17px;
   }
-  .primary kbd {
+  .run-button kbd {
     display: none;
   }
   .workspace-toolbar {
@@ -1481,11 +1483,11 @@ h1 {
   .language-select > svg:last-child {
     display: none;
   }
-  .run-button {
+  .test-action {
     font-size: 12px;
     padding: 9px;
   }
-  .run-button > svg {
+  .test-action > svg {
     width: 12px;
   }
   .workspace-actions {

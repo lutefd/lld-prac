@@ -37,9 +37,9 @@ Open **Settings** (gear) on the roadmap or practice toolbar to change theme, lan
 - Use **+ New file** in Explorer to create additional `.go`, `.py`, `.ts`, or `.java` source files, including paths such as `helpers/pricing.go`. Switch files in Explorer; extra files are saved with the selected exercise and language.
 - Add personal tests to the sandbox or create your own test files: `*_test.go`, `test_*.py` / `*_test.py`, or `*.test.ts` / `*_test.ts`. Java tests use `*Test.java` with a `public static void main(String[] args)` method and assertions that throw on failure. Nested test files run too. Supplied tests are read only; Go test names do not need a special prefix.
 - You can switch programming languages while a run is queued or executing. Your draft is preserved for each language; the previous browser request is abandoned and cannot update the new workspace. An already executing server-side test finishes within its time limit.
-- Click **Run tests** or press **⌘ Enter / Ctrl Enter**. The console shows the actual runner output, including your test logs, errors, assertion failures, and hidden check results.
-- Passing the cumulative checks unlocks the next level. Later-level test files are excluded from the execution snapshot until their level is selected.
-- Drag the dividers to resize requirements, the file explorer, and the console. Each pane can be collapsed and restored; sizes and visibility are remembered in this browser. Focus a divider and use arrow keys to resize (Shift for larger steps), or double-click it to reset the size. Run tests automatically reopens a collapsed console. The practice timer can be hidden or paused from Settings.
+- Click **Run tests** or press **⌘ Enter / Ctrl Enter** to check your draft. The console shows runner output, including your test logs, assertion failures, and hidden check results. Run tests leaves attempt history and level progress unchanged.
+- Click **Submit** to run the same checks on the current draft and record an attempt. A passing submission unlocks the next level. Both actions run the cumulative checks through the selected level.
+- Drag the dividers to resize requirements, the file explorer, and the console. Each pane can be collapsed and restored; sizes and visibility are remembered in this browser. Focus a divider and use arrow keys to resize (Shift for larger steps), or double-click it to reset the size. Run tests and Submit reopen a collapsed console. The practice timer can be hidden or paused from Settings.
 
 Drafts, attempts, and unlocked levels are saved per account in SQLite (`.practice/workbench.db` locally), separately for each exercise and language. Runtime workspace files live under ignored `.practice/workspaces/`. Reset clears attempts and drafts only for the selected exercise and language. Existing browser drafts and progress are imported once when you first sign in.
 
@@ -139,10 +139,10 @@ docker compose start backend
 ```
 
 - **Disable sign-up.** Once your group has created accounts, set `PRACTICE_DISABLE_SIGNUP=true` in `.env` and run `docker compose up -d`. Existing users can still sign in.
-- **Progress report API.** Create an API key on the **Account** page (`/account`), then query `/api/v1/report` (optional `?limit=100`, max `1000`). API keys can only read the report and cannot open workspaces or run code.
+- **Progress report API.** Create a read-only API key on the **Account** page (`/account`), then query `GET /api/v1/report` with the `x-api-key` header. The `attempts` list is newest first. Use `since` with an ISO 8601 timestamp with a timezone, or use `YYYY-MM-DD` for midnight UTC. The server includes only attempts strictly after the cutoff and then applies `limit` (default 100, max 1000). Invalid or repeated `since` values return HTTP 400. `summary` and `progress` cover all saved history, including attempts from before the Run and Submit split.
 
 ```sh
-curl -H "x-api-key: <your-api-key>" https://practice.example.com/api/v1/report
+curl -H "x-api-key: <your-api-key>" 'https://practice.example.com/api/v1/report?since=2026-11-01T00:00:00Z&limit=100'
 ```
 
 ```json

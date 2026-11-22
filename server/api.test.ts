@@ -401,8 +401,9 @@ test("another user's workspace returns 404", async () => {
   }
 });
 
-test("runs record attempts, unlock only on pass, survive reopen, and appear in progress", async () => {
+test("runs are practice and only submissions record results and unlock levels", async () => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "lld-run-test-"));
+  let duringTests: (() => Promise<void>) | undefined;
   let nextResult = {
     passed: false,
     output: "fail",
@@ -411,7 +412,10 @@ test("runs record attempts, unlock only on pass, survive reopen, and appear in p
   };
   const { base, close } = await startServer({
     workspaceRoot: directory,
-    executeTests: async () => nextResult,
+    executeTests: async () => {
+      await duringTests?.();
+      return nextResult;
+    },
   });
   try {
     const user = await signUp(base);
@@ -422,34 +426,37 @@ test("runs record attempts, unlock only on pass, survive reopen, and appear in p
       })
     ).json();
 
-    // Failing run does not unlock, and omits pair from /api/progress.
-    const failRun = await (
-      await user.post(`/api/workspace/${sessionId}/run`, {
-        level: 1,
-        files: [],
-      })
-    ).json();
+    const check = (action: "run" | "submit", level = 1) =>
+      user.post(`/api/workspace/${sessionId}/${action}`, { level, files: [] });
+    const failRun = await (await check("run")).json();
     assert.equal(failRun.passed, false);
     assert.equal(failRun.unlocked, 1);
-    assert.deepEqual(await (await user.get("/api/progress")).json(), {
-      progress: {},
-    });
 
-    // Passing run raises unlocked, persists across reopen, and shows in /api/progress.
-    nextResult = {
+    const failed = nextResult;
+    const passed = {
       passed: true,
       output: "ok",
       durationMs: 22,
       timedOut: false,
     };
-    const passRun = await (
-      await user.post(`/api/workspace/${sessionId}/run`, {
-        level: 1,
-        files: [],
-      })
-    ).json();
+    nextResult = passed;
+    const passRun = await (await check("run")).json();
     assert.equal(passRun.passed, true);
-    assert.equal(passRun.unlocked, 2);
+    assert.equal(passRun.unlocked, 1);
+    assert.equal((await check("submit", 2)).status, 403);
+
+    nextResult = failed;
+    const failSubmit = await (await check("submit")).json();
+    assert.equal(failSubmit.passed, false);
+    assert.equal(failSubmit.unlocked, 1);
+    assert.deepEqual(await (await user.get("/api/progress")).json(), {
+      progress: {},
+    });
+
+    nextResult = passed;
+    const passSubmit = await (await check("submit")).json();
+    assert.equal(passSubmit.passed, true);
+    assert.equal(passSubmit.unlocked, 2);
 
     assert.deepEqual(await (await user.get("/api/progress")).json(), {
       progress: { "bounded-stack": { python: 2 } },
@@ -464,7 +471,6 @@ test("runs record attempts, unlock only on pass, survive reopen, and appear in p
     ).json();
     assert.equal(reopened.unlocked, 2);
 
-    // Report shows both the failed and passed attempts.
     const keyRes = await user.post("/api/auth/api-key/create", { name: "cli" });
     const { key } = (await keyRes.json()) as { key: string };
     const reportRes = await fetch(`${base}/api/v1/report`, {
@@ -475,8 +481,23 @@ test("runs record attempts, unlock only on pass, survive reopen, and appear in p
     assert.equal(data.summary.attempts, 2);
     assert.equal(data.summary.passedAttempts, 1);
     assert.equal(data.summary.levelsPassed, 1);
-    assert.equal(data.attempts[0].passed, true);
-    assert.equal(data.attempts[1].passed, false);
+    assert.deepEqual(
+      data.attempts.map((attempt) => attempt.passed),
+      [true, false],
+    );
+
+    duringTests = async () => {
+      const reset = await user.del("/api/practice/bounded-stack/python");
+      assert.equal(reset.status, 200);
+    };
+    const staleSubmit = await user.post(
+      `/api/workspace/${reopened.sessionId}/submit`,
+      { level: 2, files: [] },
+    );
+    assert.equal(staleSubmit.status, 403);
+    assert.deepEqual(await (await user.get("/api/progress")).json(), {
+      progress: {},
+    });
   } finally {
     await close();
     await rm(directory, { recursive: true, force: true });
@@ -667,8 +688,14 @@ test("report requires a valid API key, revokes on delete, and API keys cannot op
         language: "go",
       })
     ).json();
-    await user.post(`/api/workspace/${sessionId}/run`, { level: 1, files: [] });
-    await user.post(`/api/workspace/${sessionId}/run`, { level: 2, files: [] });
+    await user.post(`/api/workspace/${sessionId}/submit`, {
+      level: 1,
+      files: [],
+    });
+    await user.post(`/api/workspace/${sessionId}/submit`, {
+      level: 2,
+      files: [],
+    });
 
     const createdKeyRes = await user.post("/api/auth/api-key/create", {
       name: "report-reader",
@@ -707,6 +734,33 @@ test("report requires a valid API key, revokes on delete, and API keys cannot op
     assert.equal(data.progress[0].problemId, "bounded-stack");
     assert.equal(data.attempts.length, 1);
     assert.equal(data.attempts[0].level, 2);
+
+    const cutoff = data.attempts[0].createdAt;
+    const filter = (since: string) =>
+      fetch(`${base}/api/v1/report?${new URLSearchParams({ since, limit: "1" })}`, {
+        headers: { "x-api-key": createdKey.key },
+      });
+    const offsetCutoff = new Date(Date.parse(cutoff) + 3_600_000)
+      .toISOString()
+      .replace("Z", "+01:00");
+    for (const since of [cutoff, offsetCutoff]) {
+      const filteredRes = await filter(since);
+      assert.equal(filteredRes.status, 200);
+      const filtered = (await filteredRes.json()) as ProgressReport;
+      assert.deepEqual(filtered.attempts, []);
+      assert.deepEqual(filtered.summary, data.summary);
+      assert.deepEqual(filtered.progress, data.progress);
+    }
+    const dateRes = await filter("1900-01-01");
+    assert.equal(dateRes.status, 200);
+    assert.deepEqual(((await dateRes.json()) as ProgressReport).attempts, data.attempts);
+    for (const since of ["", "yesterday", "2026-02-30", "2026-01-01T00:00:00"]) {
+      assert.equal((await filter(since)).status, 400);
+    }
+    const repeated = await fetch(`${base}/api/v1/report?since=1900-01-01&since=2000-01-01`, {
+      headers: { "x-api-key": createdKey.key },
+    });
+    assert.equal(repeated.status, 400);
 
     // Deleting the key revokes report access immediately.
     const delKeyRes = await user.post("/api/auth/api-key/delete", {
@@ -780,7 +834,7 @@ test("hosted origins are explicit and workspace capacity includes simultaneous o
   }
 });
 
-test("API queues globally, locks queued workspaces, preserves queue errors, and skips recording failed queue runs", async () => {
+test("runs and submissions share the queue and only executed submissions are recorded", async () => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "lld-queue-api-"));
   let release!: () => void;
   let started!: () => void;
@@ -814,28 +868,36 @@ test("API queues globally, locks queued workspaces, preserves queue errors, and 
       assert.equal(response.status, 200);
       ids.push((await response.json()).sessionId);
     }
-    const run = (id: string) =>
-      user.post(`/api/workspace/${id}/run`, { level: 1, files: [] });
-    const first = run(ids[0]);
+    const check = (id: string, action: "run" | "submit") =>
+      user.post(`/api/workspace/${id}/${action}`, { level: 1, files: [] });
+    const first = check(ids[0], "run");
     await entered;
-    const second = run(ids[1]);
-    // Wait for the queue lock to be observable rather than assuming fetch ordering.
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    assert.equal((await run(ids[1])).status, 409);
-    assert.equal((await run(ids[2])).status, 503);
+    assert.equal((await check(ids[0], "submit")).status, 409);
+    const second = check(ids[1], "submit");
+    const until = Date.now() + 250;
+    let saveStatus: number;
+    do {
+      const probe = await user.post(`/api/workspace/${ids[1]}/files`, {
+        files: [],
+      });
+      saveStatus = probe.status;
+      await probe.arrayBuffer();
+    } while (saveStatus === 200 && Date.now() < until);
+    assert.equal(saveStatus, 409);
+    assert.equal((await check(ids[1], "run")).status, 409);
+    assert.equal((await check(ids[2], "submit")).status, 503);
     assert.equal((await second).status, 504);
     assert.equal(calls, 1);
     release();
     assert.equal((await first).status, 200);
-    assert.equal((await run(ids[1])).status, 200);
+    assert.equal((await check(ids[1], "submit")).status, 200);
 
-    // Only the two runs that actually executed are recorded (not the 409/503/504 errors).
     const keyRes = await user.post("/api/auth/api-key/create", { name: "q" });
     const { key } = (await keyRes.json()) as { key: string };
     const reportData = (await (
       await fetch(`${base}/api/v1/report`, { headers: { "x-api-key": key } })
     ).json()) as ProgressReport;
-    assert.equal(reportData.summary.attempts, 2);
+    assert.equal(reportData.summary.attempts, 1);
   } finally {
     release();
     await close();

@@ -54,6 +54,25 @@ func TestArbitraryName(t *testing.T) { t.Log("MY_EDGE_CASE_OUTPUT"); d:=NewDispa
   );
   await expect(page.locator(".raw-output")).toContainText("TestArbitraryName");
   await expect(
+    page.getByText("Checks passed. Submit to complete this level."),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Level 2", exact: true }),
+  ).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "Continue to level 2" }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Submit", exact: true }).click();
+  await expect(page.getByText("Submission passed")).toBeVisible({
+    timeout: 30000,
+  });
+  await expect(page.locator(".raw-output")).toContainText(
+    "MY_EDGE_CASE_OUTPUT",
+  );
+  await expect(
+    page.getByRole("button", { name: "Continue to level 2" }),
+  ).toBeEnabled();
+  await expect(
     page.getByRole("button", { name: "Level 2", exact: true }),
   ).toBeEnabled();
   await page.reload();

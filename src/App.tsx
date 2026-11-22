@@ -22,6 +22,7 @@ import {
   Play,
   RotateCcw,
   Search,
+  Send,
   SquareTerminal,
   Terminal,
   Trash2,
@@ -67,12 +68,16 @@ type Session = {
   lspAvailable: boolean;
   language: Language;
 };
-type Run = {
+type TestAction = "run" | "submit";
+type TestResult = {
   passed: boolean;
   output: string;
   durationMs: number;
-  unlocked?: number;
-  error?: string;
+  unlocked: number;
+};
+const testMessages = {
+  run: { passed: "All checks passed", failed: "Some checks didn’t pass" },
+  submit: { passed: "Submission passed", failed: "Submission didn’t pass" },
 };
 const languageNames = {
   go: "Go",
@@ -215,8 +220,11 @@ function Workspace({
     [activePath, setActivePath] = useState("");
   const [level, setLevel] = useState(1),
     [unlocked, setUnlocked] = useState(1),
-    [run, setRun] = useState<Run | null>(null),
-    [running, setRunning] = useState(false);
+    [run, setRun] = useState<(TestResult & { action: TestAction }) | null>(
+      null,
+    ),
+    [runningAction, setRunningAction] = useState<TestAction | null>(null);
+  const running = runningAction !== null;
   const [error, setError] = useState(""),
     [status, setStatus] = useState("Connecting"),
     [saved, setSaved] = useState(true),
@@ -356,7 +364,7 @@ function Workspace({
     sessionRef.current = null;
     filesRef.current = [];
     dirtyRef.current = false;
-    setRunning(false);
+    setRunningAction(null);
     setSession(null);
     setFiles([]);
     setDeleteTarget(null);
@@ -485,48 +493,50 @@ function Workspace({
     },
     [running, flushSave],
   );
-  const runTests = useCallback(async () => {
-    if (!session || running) return;
-    const gen = generation.current;
-    const controller = new AbortController();
-    runningRequest.current = controller;
-    setRunning(true);
-    setConsoleOpen(true);
-    setRun(null);
-    setError("");
-    setConsoleTab("console");
-    try {
-      await flushSave();
-      if (gen !== generation.current) return;
-      const result = await api<Run>(
-        `/workspace/${session.sessionId}/run`,
-        { level, files: filesRef.current.filter((f) => !f.readOnly) },
-        controller.signal,
-      );
-      if (gen !== generation.current) return;
-      setRun(result);
-      if (typeof result.unlocked === "number") {
+  const checkSolution = useCallback(
+    async (action: TestAction) => {
+      if (!session || sessionRef.current !== session || runningRequest.current)
+        return;
+      const controller = new AbortController();
+      runningRequest.current = controller;
+      setRunningAction(action);
+      setConsoleOpen(true);
+      setRun(null);
+      setError("");
+      setConsoleTab("console");
+      try {
+        await flushSave();
+        if (runningRequest.current !== controller) return;
+        const result = await api<TestResult>(
+          `/workspace/${session.sessionId}/${action}`,
+          { level, files: filesRef.current.filter((f) => !f.readOnly) },
+          controller.signal,
+        );
+        if (runningRequest.current !== controller) return;
+        setRun({ ...result, action });
         setUnlocked(result.unlocked);
+      } catch (e) {
+        if (runningRequest.current === controller)
+          setError((e as Error).message);
+      } finally {
+        if (runningRequest.current === controller) {
+          runningRequest.current = null;
+          setRunningAction(null);
+        }
       }
-    } catch (e) {
-      if (gen === generation.current) setError((e as Error).message);
-    } finally {
-      if (gen === generation.current) {
-        runningRequest.current = null;
-        setRunning(false);
-      }
-    }
-  }, [session, running, level, flushSave]);
+    },
+    [session, level, flushSave],
+  );
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
         e.preventDefault();
-        void runTests();
+        void checkSolution("run");
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [runTests]);
+  }, [checkSolution]);
   const createFile = async () => {
     if (!session || creatingFile) return;
     const path = newFilePath.trim();
@@ -642,6 +652,13 @@ function Workspace({
           line,
         ),
       ) || [];
+  const needsSubmission =
+    run?.action === "run" && run.passed && level === unlocked;
+  const resultMessage =
+    run &&
+    (needsSubmission
+      ? "Checks passed. Submit to complete this level."
+      : testMessages[run.action][run.passed ? "passed" : "failed"]);
   const filtered = problems.filter(
     (p) =>
       (category === "All exercises" || p.category === category) &&
@@ -763,20 +780,32 @@ function Workspace({
             )}
           />
           <button
-            className="primary run-button"
-            onClick={() => void runTests()}
+            className="secondary test-action run-button"
+            onClick={() => void checkSolution("run")}
             disabled={!session || running}
+            aria-label={t("Run tests")}
             title={t("Run tests") + " (⌘ ↵)"}
           >
-            {running ? (
+            {runningAction === "run" ? (
               <LoaderCircle size={15} className="spin" />
             ) : (
               <Play size={13} fill="currentColor" />
             )}
-            <span className="run-label">
-              {running ? t("Queued or running…") : t("Run tests")}
-            </span>
+            <span className="run-label">{t("Run tests")}</span>
             <kbd>⌘ ↵</kbd>
+          </button>
+          <button
+            className="primary test-action"
+            onClick={() => void checkSolution("submit")}
+            disabled={!session || running}
+            title={t("Check this level and record an attempt")}
+          >
+            {runningAction === "submit" ? (
+              <LoaderCircle size={15} className="spin" />
+            ) : (
+              <Send size={14} />
+            )}
+            {t("Submit")}
           </button>
         </div>
       </header>
@@ -1198,39 +1227,42 @@ function Workspace({
                     <pre className="error-output">{t(error)}</pre>
                   ) : run ? (
                     <>
-                      {consoleTab === "results" ? (
-                        <div className="test-results">
+                      {resultMessage &&
+                        (consoleTab === "results" ||
+                          needsSubmission ||
+                          run.action === "submit") && (
                           <div
                             className={`result-banner ${run.passed ? "pass" : "fail"}`}
                           >
                             {run.passed ? <Check size={16} /> : <X size={16} />}
-                            <strong>
-                              {run.passed
-                                ? t("All checks passed")
-                                : t("Some checks didn’t pass")}
-                            </strong>
+                            <strong>{t(resultMessage)}</strong>
                             <span>
                               {t("Level")} {level} · {languageNames[language]}
                             </span>
-                            {run.passed && level < problem.levels.length && (
-                              <button
-                                onClick={() => {
-                                  setLevel(level + 1);
-                                  setRun(null);
-                                }}
-                              >
-                                {t("Continue to level {level}", {
-                                  level: level + 1,
-                                })}
-                                <ArrowUpRight size={13} />
-                              </button>
-                            )}
+                            {run.passed &&
+                              level < unlocked &&
+                              level < problem.levels.length && (
+                                <button
+                                  onClick={() => {
+                                    setLevel(level + 1);
+                                    setRun(null);
+                                  }}
+                                >
+                                  {t("Continue to level {level}", {
+                                    level: level + 1,
+                                  })}
+                                  <ArrowUpRight size={13} />
+                                </button>
+                              )}
                           </div>
-                          {testLines.length ? (
-                            <pre>{testLines.join("\n")}</pre>
-                          ) : (
-                            <pre>{run.output}</pre>
-                          )}
+                        )}
+                      {consoleTab === "results" ? (
+                        <div className="test-results">
+                          <pre>
+                            {testLines.length
+                              ? testLines.join("\n")
+                              : run.output}
+                          </pre>
                         </div>
                       ) : (
                         <pre className="raw-output">
@@ -1268,11 +1300,9 @@ function Workspace({
                 {t("Show console")}
                 <ChevronDown size={13} />
               </button>
-              {run && (
+              {run && resultMessage && (
                 <span className={run.passed ? "pass" : "fail"}>
-                  {run.passed
-                    ? t("All checks passed")
-                    : t("Some checks didn’t pass")}
+                  {t(resultMessage)}
                 </span>
               )}
             </div>

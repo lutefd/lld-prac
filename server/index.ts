@@ -285,6 +285,21 @@ function setting(name: string, fallback: number): number {
   return parsed;
 }
 
+function parseReportSince(value: unknown): number | undefined {
+  if (value === undefined) return undefined;
+  if (
+    typeof value === "string" &&
+    /^\d{4}-\d{2}-\d{2}(?:T(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2}))?$/.test(value)
+  ) {
+    const timestamp = Date.parse(value);
+    const day = value.slice(0, 10);
+    const midnight = new Date(`${day}T00:00:00Z`);
+    if (Number.isFinite(timestamp) && midnight.toJSON()?.slice(0, 10) === day)
+      return timestamp;
+  }
+  throw new Error("since must be an ISO date or a timestamp with a timezone");
+}
+
 export function createApp({
   workspaceRoot = process.env.PRACTICE_WORKSPACE_ROOT ||
     path.join(projectRoot, ".practice", "workspaces"),
@@ -516,7 +531,8 @@ export function createApp({
       const limit = Number.isFinite(parsed)
         ? Math.min(1000, Math.max(1, Math.floor(parsed)))
         : 100;
-      res.json(report(db, userRow.id, userRow, catalog, limit));
+      const since = parseReportSince(req.query.since);
+      res.json(report(db, userRow.id, userRow, catalog, { limit, since }));
     } catch (error) {
       next(error);
     }
@@ -840,64 +856,81 @@ export function createApp({
       next(error);
     }
   });
-  app.post("/api/workspace/:id/run", async (req, res, next) => {
-    const session = req.workspace;
-    if (session.running) {
-      res.status(409).json({ error: "Tests are already running" });
-      return;
-    }
-    try {
-      const level = req.body?.level;
-      if (
-        !Number.isInteger(level) ||
-        level < 1 ||
-        level > session.problem.levels.length ||
-        level > 9
-      ) {
-        res.status(400).json({ error: "Invalid level" });
+  const handleTests =
+    (action: "run" | "submit"): RequestHandler =>
+    async (req, res, next) => {
+      const session = req.workspace;
+      if (session.running) {
+        res.status(409).json({ error: "Tests are already running" });
         return;
       }
-      session.running = true;
-      const incomingFiles = req.body?.files ?? [];
-      validateFiles(incomingFiles, session.files);
-      const result = await queue.run(async () => {
-        if (session.closing) throw new Error("Workspace was closed");
-        await saveFiles(session, incomingFiles);
-        if (Array.isArray(incomingFiles) && incomingFiles.length > 0)
-          await persistDraft(session);
-        return executeTests(session.directory, session.language, level, {
-          timeoutMs: testTimeoutMs,
-          suppliedFiles: session.files
-            .filter((file) => !file.userCreated)
-            .map((file) => file.path),
-        });
-      });
-      if (closed) throw new Error("Server is shutting down");
-      recordAttempt(db, session.userId, {
-        problemId: session.problem.id,
-        language: session.language,
-        level,
-        passed: result.passed,
-        durationMs: result.durationMs,
-      });
-      const unlocked = unlockedLevel(
-        db,
-        session.userId,
-        session.problem.id,
-        session.language,
-        session.problem.levels.length,
-      );
-      res.json({ ...result, unlocked });
-    } catch (error) {
-      next(error);
-    } finally {
-      session.running = false;
-      if (session.closing)
-        await rm(session.directory, { recursive: true, force: true }).catch(
-          console.error,
+      const currentUnlockedLevel = () =>
+        unlockedLevel(
+          db,
+          session.userId,
+          session.problem.id,
+          session.language,
+          session.problem.levels.length,
         );
-    }
-  });
+      const requireUnlockedLevel = (level: number) => {
+        if (action === "submit" && level > currentUnlockedLevel()) {
+          throw Object.assign(
+            new Error("Pass the previous level before submitting this one."),
+            { status: 403 },
+          );
+        }
+      };
+      try {
+        const level = req.body?.level;
+        if (
+          !Number.isInteger(level) ||
+          level < 1 ||
+          level > session.problem.levels.length ||
+          level > 9
+        ) {
+          res.status(400).json({ error: "Invalid level" });
+          return;
+        }
+        requireUnlockedLevel(level);
+        session.running = true;
+        const incomingFiles = req.body?.files ?? [];
+        validateFiles(incomingFiles, session.files);
+        const result = await queue.run(async () => {
+          if (session.closing) throw new Error("Workspace was closed");
+          await saveFiles(session, incomingFiles);
+          if (Array.isArray(incomingFiles) && incomingFiles.length > 0)
+            await persistDraft(session);
+          return executeTests(session.directory, session.language, level, {
+            timeoutMs: testTimeoutMs,
+            suppliedFiles: session.files
+              .filter((file) => !file.userCreated)
+              .map((file) => file.path),
+          });
+        });
+        if (closed) throw new Error("Server is shutting down");
+        if (action === "submit") {
+          requireUnlockedLevel(level);
+          recordAttempt(db, session.userId, {
+            problemId: session.problem.id,
+            language: session.language,
+            level,
+            passed: result.passed,
+            durationMs: result.durationMs,
+          });
+        }
+        res.json({ ...result, unlocked: currentUnlockedLevel() });
+      } catch (error) {
+        next(error);
+      } finally {
+        session.running = false;
+        if (session.closing)
+          await rm(session.directory, { recursive: true, force: true }).catch(
+            console.error,
+          );
+      }
+    };
+  app.post("/api/workspace/:id/run", handleTests("run"));
+  app.post("/api/workspace/:id/submit", handleTests("submit"));
   app.post("/api/workspace/:id/lsp", async (req, res, next) => {
     try {
       const session = req.workspace;
