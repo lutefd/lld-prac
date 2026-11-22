@@ -1,9 +1,8 @@
 import { PreferencesControls, usePreferences } from "./preferences";
 import { useEffect, useState } from "react";
-import { ArrowLeft, ArrowUpRight, Check, Code2 } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Check, Code2, UserRound } from "lucide-react";
 import { roadmap } from "../shared/roadmap";
 import type { Language, ProgressMap } from "../shared/account";
-import AccountSection from "./components/AccountSection";
 import "./roadmap.css";
 import { followLink, practiceUrl } from "./navigation";
 
@@ -75,7 +74,18 @@ export default function Roadmap({ problems }: { problems: RoadmapProblem[] }) {
         <span>
           <Code2 size={19} /> workbench.
         </span>
-        <PreferencesControls account={() => <AccountSection />} />
+        <div className="roadmap-nav-actions">
+          <a
+            className="account-trigger"
+            href="/account"
+            onClick={followLink}
+            aria-label={t("Account")}
+            title={t("Account")}
+          >
+            <UserRound size={16} aria-hidden="true" />
+          </a>
+          <PreferencesControls />
+        </div>
       </nav>
       <header className="roadmap-intro">
         <span className="eyebrow">{t("YOUR PRACTICE PATH")}</span>

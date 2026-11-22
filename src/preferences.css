@@ -1,4 +1,5 @@
-.settings-trigger {
+.settings-trigger,
+.account-trigger {
   display: grid;
   place-items: center;
   width: 32px;
@@ -10,7 +11,8 @@
   flex-shrink: 0;
 }
 .settings-trigger:hover:not(:disabled),
-.settings-trigger[aria-expanded="true"] {
+.settings-trigger[aria-expanded="true"],
+.account-trigger:hover {
   color: var(--orange);
   border-color: var(--orange);
 }

@@ -25,13 +25,14 @@ import {
   SquareTerminal,
   Terminal,
   Trash2,
+  UserRound,
   X,
 } from "lucide-react";
 import Editor from "./Editor";
 import PanelDivider from "./PanelDivider";
 import Roadmap from "./Roadmap";
+import AccountPage from "./components/AccountPage";
 import AccountProvider from "./components/AccountProvider";
-import AccountSection from "./components/AccountSection";
 import { useAccount } from "./lib/account";
 import { followLink, navigateTo, practiceUrl } from "./navigation";
 import type { CSSProperties, MouseEvent } from "react";
@@ -137,13 +138,15 @@ function AuthenticatedApp() {
       .then((data) => setProblems(data.problems))
       .catch((e) => setError(e.message));
   }, []);
+  const pathname = route.replace(/\/+$/, "") || "/";
+  if (pathname === "/account") return <AccountPage key={user.id} />;
   const problems = rawProblems.map((problem) =>
     localizeProblem(problem, locale),
   );
   if (!problems.length)
     return (
       <div className="editor-loading" style={{ height: "100dvh" }}>
-        <PreferencesControls account={() => <AccountSection />} />
+        <PreferencesControls />
         <Code2 size={32} />
         <strong>
           {error
@@ -160,7 +163,6 @@ function AuthenticatedApp() {
         )}
       </div>
     );
-  const pathname = route.replace(/\/+$/, "") || "/";
   if (pathname === "/" || pathname === "/roadmap")
     return <Roadmap key={user.id} problems={problems} />;
   let problemId = "";
@@ -174,7 +176,7 @@ function AuthenticatedApp() {
   if (!problem)
     return (
       <main className="roadmap-page">
-        <PreferencesControls account={() => <AccountSection />} />
+        <PreferencesControls />
         <header className="roadmap-intro">
           <h1>{t("Exercise not found")}</h1>
           <p>
@@ -700,8 +702,16 @@ function Workspace({
             </select>
             <ChevronDown size={13} />
           </label>
+          <a
+            className="account-trigger"
+            href="/account"
+            onClick={(event) => followLinkAfterSave(event)}
+            aria-label={t("Account")}
+            title={t("Account")}
+          >
+            <UserRound size={16} aria-hidden="true" />
+          </a>
           <PreferencesControls
-            account={() => <AccountSection />}
             extra={(close) => (
               <>
                 <label className="settings-toggle">

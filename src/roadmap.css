@@ -10,21 +10,27 @@
   padding: 26px 0;
   border-bottom: 1px solid var(--line);
 }
-.roadmap-nav a,
-.roadmap-nav span {
+.roadmap-nav > a,
+.roadmap-nav > span {
   display: flex;
   align-items: center;
   gap: 9px;
 }
-.roadmap-nav a {
+.roadmap-nav > a {
   color: var(--muted);
 }
 .roadmap-nav > span {
   font-weight: 700;
   font-size: 18px;
 }
-.roadmap-nav svg {
+.roadmap-nav > a svg,
+.roadmap-nav > span svg {
   color: var(--orange);
+}
+.roadmap-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 .roadmap-intro {
   padding: 46px 0 26px;

@@ -6,10 +6,15 @@ export const practiceUrl = (id: string) =>
 export function navigateTo(href: string) {
   const url = new URL(href, location.origin);
   const destination = url.pathname + url.search + url.hash;
-  if (destination === location.pathname + location.search + location.hash)
-    return;
-  history.pushState(null, "", destination);
+  const current = location.pathname + location.search + location.hash;
+  if (destination === current) return;
+  history.pushState({ from: current }, "", destination);
   window.dispatchEvent(new PopStateEvent("popstate"));
+}
+
+export function previousPath(): string | null {
+  const state = history.state as { from?: unknown } | null;
+  return typeof state?.from === "string" ? state.from : null;
 }
 
 // Keep real link behavior for new tabs, copied URLs, and modified clicks.
