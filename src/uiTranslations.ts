@@ -64,8 +64,8 @@ export const uiTranslations: Record<string, string> = {
   "Progress report API": "API do relatório de progresso",
   "Query GET /api/v1/report with an x-api-key header to export your practice history as JSON.":
     "Consulte GET /api/v1/report com o cabeçalho x-api-key para exportar seu histórico de prática em JSON.",
-  "The response includes your account info, an overall summary (attempts, passed attempts, levels passed, started and completed exercises), per-exercise progress by language, and recent attempts (default 100, up to 1000 with ?limit=).":
-    "A resposta inclui os dados da conta, um resumo geral (tentativas, tentativas aprovadas, níveis concluídos, exercícios iniciados e concluídos), o progresso por exercício e linguagem e as tentativas recentes (padrão 100, até 1000 com ?limit=).",
+  "The report includes account info, lifetime totals, progress by exercise and language, and the latest attempts. Use ?since=2026-01-01 to list attempts after midnight UTC on that date. You can also pass an ISO timestamp with a timezone. Use limit to change the number of attempts returned (default 100, max 1000).":
+    "O relatório inclui os dados da conta, os totais acumulados, o progresso por exercício e linguagem e as últimas tentativas. Use ?since=2026-01-01 para listar tentativas após a meia-noite UTC dessa data. Você também pode informar uma data e hora no formato ISO com fuso horário. Use limit para alterar a quantidade de tentativas retornadas (padrão 100, máximo 1000).",
   "API keys can only read this report and cannot open workspaces or run code.":
     "Chaves de API só podem ler este relatório e não podem abrir ambientes nem executar código.",
   "Example request": "Exemplo de requisição",

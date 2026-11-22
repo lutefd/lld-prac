@@ -334,7 +334,7 @@ export default function AccountPage() {
           </div>
           <p className="report-description">
             {t(
-              "The response includes your account info, an overall summary (attempts, passed attempts, levels passed, started and completed exercises), per-exercise progress by language, and recent attempts (default 100, up to 1000 with ?limit=).",
+              "The report includes account info, lifetime totals, progress by exercise and language, and the latest attempts. Use ?since=2026-01-01 to list attempts after midnight UTC on that date. You can also pass an ISO timestamp with a timezone. Use limit to change the number of attempts returned (default 100, max 1000).",
             )}
           </p>
           <div className="report-example">

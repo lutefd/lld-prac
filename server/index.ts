@@ -285,6 +285,21 @@ function setting(name: string, fallback: number): number {
   return parsed;
 }
 
+function parseReportSince(value: unknown): number | undefined {
+  if (value === undefined) return undefined;
+  if (
+    typeof value === "string" &&
+    /^\d{4}-\d{2}-\d{2}(?:T(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2}))?$/.test(value)
+  ) {
+    const timestamp = Date.parse(value);
+    const day = value.slice(0, 10);
+    const midnight = new Date(`${day}T00:00:00Z`);
+    if (Number.isFinite(timestamp) && midnight.toJSON()?.slice(0, 10) === day)
+      return timestamp;
+  }
+  throw new Error("since must be an ISO date or a timestamp with a timezone");
+}
+
 export function createApp({
   workspaceRoot = process.env.PRACTICE_WORKSPACE_ROOT ||
     path.join(projectRoot, ".practice", "workspaces"),
@@ -516,7 +531,8 @@ export function createApp({
       const limit = Number.isFinite(parsed)
         ? Math.min(1000, Math.max(1, Math.floor(parsed)))
         : 100;
-      res.json(report(db, userRow.id, userRow, catalog, limit));
+      const since = parseReportSince(req.query.since);
+      res.json(report(db, userRow.id, userRow, catalog, { limit, since }));
     } catch (error) {
       next(error);
     }

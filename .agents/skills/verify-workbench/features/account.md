@@ -27,7 +27,7 @@ Preconditions: doctor exits 0.
 ## Gotchas
 
 - `launch.sh` passes its environment through: `PRACTICE_DISABLE_SIGNUP=true .agents/skills/verify-workbench/scripts/launch.sh` drives the disabled sign-up path (no user can be created in that instance).
-- `GET /api/v1/report` takes `?limit=` (default 100, clamped 1..1000); API keys are rate limited to 120 requests a minute.
+- `GET /api/v1/report` supports `since` for attempts strictly after an ISO 8601 timestamp with a timezone or a date at midnight UTC. It applies `limit` after filtering (default 100, clamped to 1–1000). The summary and per-exercise progress cover all saved history. API keys allow 120 requests a minute.
 - `/api/import` writes nothing for an account that already has attempts or drafts; it still answers 200 `{ imported: false }`, and the browser clears its legacy keys either way.
 
 - `launch.sh` isolates SQLite in `.practice/verify-run/workbench.db`; clean up between runs if testing from an empty database.

@@ -708,6 +708,33 @@ test("report requires a valid API key, revokes on delete, and API keys cannot op
     assert.equal(data.attempts.length, 1);
     assert.equal(data.attempts[0].level, 2);
 
+    const cutoff = data.attempts[0].createdAt;
+    const filter = (since: string) =>
+      fetch(`${base}/api/v1/report?${new URLSearchParams({ since, limit: "1" })}`, {
+        headers: { "x-api-key": createdKey.key },
+      });
+    const offsetCutoff = new Date(Date.parse(cutoff) + 3_600_000)
+      .toISOString()
+      .replace("Z", "+01:00");
+    for (const since of [cutoff, offsetCutoff]) {
+      const filteredRes = await filter(since);
+      assert.equal(filteredRes.status, 200);
+      const filtered = (await filteredRes.json()) as ProgressReport;
+      assert.deepEqual(filtered.attempts, []);
+      assert.deepEqual(filtered.summary, data.summary);
+      assert.deepEqual(filtered.progress, data.progress);
+    }
+    const dateRes = await filter("1900-01-01");
+    assert.equal(dateRes.status, 200);
+    assert.deepEqual(((await dateRes.json()) as ProgressReport).attempts, data.attempts);
+    for (const since of ["", "yesterday", "2026-02-30", "2026-01-01T00:00:00"]) {
+      assert.equal((await filter(since)).status, 400);
+    }
+    const repeated = await fetch(`${base}/api/v1/report?since=1900-01-01&since=2000-01-01`, {
+      headers: { "x-api-key": createdKey.key },
+    });
+    assert.equal(repeated.status, 400);
+
     // Deleting the key revokes report access immediately.
     const delKeyRes = await user.post("/api/auth/api-key/delete", {
       keyId: createdKey.id,

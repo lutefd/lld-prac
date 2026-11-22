@@ -318,7 +318,7 @@ export function report(
   userId: string,
   user: ProgressReport["user"],
   catalog: PracticeProblem[],
-  limit: number,
+  { limit, since = Number.MIN_SAFE_INTEGER }: { limit: number; since?: number },
 ): ProgressReport {
   const problemsById = new Map(catalog.map((problem) => [problem.id, problem]));
   const stats = db
@@ -361,11 +361,11 @@ export function report(
       .prepare(
         `SELECT problem_id, language, level, passed, duration_ms, imported, created_at
          FROM practice_attempt
-         WHERE user_id = ?
+         WHERE user_id = ? AND created_at > ?
          ORDER BY created_at DESC, rowid DESC
          LIMIT ?`,
       )
-      .all(userId, limit) as AttemptRow[]
+      .all(userId, since, limit) as AttemptRow[]
   ).map((row): AttemptRecord => ({
     problemId: row.problem_id,
     language: row.language,

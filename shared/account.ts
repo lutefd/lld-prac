@@ -46,6 +46,6 @@ export type ProgressReport = {
     problemsCompleted: number;
   };
   progress: ProblemProgress[];
-  /** Newest first, capped by the `limit` query parameter (default 100, max 1000). */
+  /** Newest first, optionally filtered to timestamps after `since`, then capped by `limit` (default 100, max 1000). */
   attempts: AttemptRecord[];
 };
