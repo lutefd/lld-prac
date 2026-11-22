@@ -1,7 +1,9 @@
 import { PreferencesControls, usePreferences } from "./preferences";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft, ArrowUpRight, Check, Code2 } from "lucide-react";
 import { roadmap } from "../shared/roadmap";
+import type { Language, ProgressMap } from "../shared/account";
+import AccountSection from "./components/AccountSection";
 import "./roadmap.css";
 import { followLink, practiceUrl } from "./navigation";
 
@@ -20,15 +22,31 @@ function stored<T>(key: string, fallback: T): T {
 }
 export default function Roadmap({ problems }: { problems: RoadmapProblem[] }) {
   const { t } = usePreferences();
-  const [language, setLanguage] = useState(() =>
-    stored("workbench.language", "go"),
+  const [language, setLanguage] = useState<Language>(() =>
+    stored<Language>("workbench.language", "go"),
   );
+  const [progressMap, setProgressMap] = useState<ProgressMap>({});
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/progress", { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) return;
+        const data = (await response.json()) as { progress?: ProgressMap };
+        if (data.progress) setProgressMap(data.progress);
+      })
+      .catch(() => {
+        // Absent progress defaults to level 1; ignore aborts or transient errors.
+      });
+    return () => controller.abort();
+  }, []);
+
   const progress = (problem: RoadmapProblem) =>
     Math.max(
       0,
       Math.min(
         problem.levels.length,
-        stored(`workbench.progress.${problem.id}.${language}`, 1) - 1,
+        (progressMap[problem.id]?.[language] ?? 1) - 1,
       ),
     );
   const completed = problems.filter(
@@ -57,7 +75,7 @@ export default function Roadmap({ problems }: { problems: RoadmapProblem[] }) {
         <span>
           <Code2 size={19} /> workbench.
         </span>
-        <PreferencesControls />
+        <PreferencesControls account={() => <AccountSection />} />
       </nav>
       <header className="roadmap-intro">
         <span className="eyebrow">{t("YOUR PRACTICE PATH")}</span>
@@ -74,11 +92,12 @@ export default function Roadmap({ problems }: { problems: RoadmapProblem[] }) {
               aria-label={t("Roadmap language")}
               value={language}
               onChange={(e) => {
-                setLanguage(e.target.value);
+                const nextLanguage = e.target.value as Language;
+                setLanguage(nextLanguage);
                 try {
                   localStorage.setItem(
                     "workbench.language",
-                    JSON.stringify(e.target.value),
+                    JSON.stringify(nextLanguage),
                   );
                 } catch {
                   // Ignore storage quota or private-mode errors.
