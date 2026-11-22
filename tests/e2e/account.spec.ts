@@ -115,9 +115,24 @@ test("account persists unlocked levels and drafts across reloads, syncs across b
 
     await pageA1.getByRole("button", { name: "Settings", exact: true }).click();
     const dialog = pageA1.getByRole("dialog", { name: "Settings", exact: true });
-    await expect(dialog).toContainText(userA.name);
-    await expect(dialog).toContainText(userA.email);
-    await dialog.getByRole("button", { name: "Sign out", exact: true }).click();
+    await expect(dialog).not.toContainText("Sign out");
+    await expect(dialog).not.toContainText("API keys");
+    await expect(dialog).not.toContainText(userA.email);
+    await dialog
+      .getByRole("button", { name: "Close settings", exact: true })
+      .click();
+
+    await pageA1.getByRole("link", { name: "Account", exact: true }).click();
+    await expect(pageA1).toHaveURL(/\/account$/);
+    await expect(
+      pageA1.getByRole("heading", { name: "Account", exact: true }),
+    ).toBeVisible();
+    await expect(
+      pageA1.getByRole("link", { name: "Back to practice", exact: true }),
+    ).toHaveAttribute("href", "/practice/bounded-stack");
+    await expect(pageA1.locator(".account-summary")).toContainText(userA.name);
+    await expect(pageA1.locator(".account-summary")).toContainText(userA.email);
+    await pageA1.getByRole("button", { name: "Sign out", exact: true }).click();
     await expect(
       pageA1.getByRole("heading", {
         name: "Sign in to workbench.",
@@ -141,21 +156,26 @@ test("API keys read the progress report and stop working once deleted", async ({
     timeout: 30000,
   });
 
-  await page.getByRole("button", { name: "Settings", exact: true }).click();
-  const dialog = page.getByRole("dialog", { name: "Settings", exact: true });
-  await dialog.getByLabel("Key name", { exact: true }).fill("CI reporter");
-  await dialog
-    .getByRole("button", { name: "Create key", exact: true })
-    .click();
+  await page.getByRole("link", { name: "Account", exact: true }).click();
+  await expect(page).toHaveURL(/\/account$/);
+  await expect(
+    page.getByRole("heading", { name: "Progress report API", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".report-example-code")).toContainText(
+    "/api/v1/report",
+  );
 
-  const keyCode = dialog.locator(".api-key-secret");
+  await page.getByLabel("Key name", { exact: true }).fill("CI reporter");
+  await page.getByRole("button", { name: "Create key", exact: true }).click();
+
+  const keyCode = page.locator(".api-key-secret");
   await expect(keyCode).toBeVisible();
   const key = (await keyCode.innerText()).trim();
   expect(key.length).toBeGreaterThan(10);
-  await expect(dialog.locator(".api-key-curl")).toContainText(
+  await expect(page.locator(".api-key-curl")).toContainText(
     `curl -H "x-api-key: ${key}"`,
   );
-  await expect(dialog.locator(".api-key-curl")).toContainText("/api/v1/report");
+  await expect(page.locator(".api-key-curl")).toContainText("/api/v1/report");
 
   const reportResponse = await page.request.get("/api/v1/report", {
     headers: { "x-api-key": key },
@@ -178,16 +198,76 @@ test("API keys read the progress report and stop working once deleted", async ({
     ),
   ).toBe(true);
 
-  await expect(dialog.locator(".api-key-list")).toContainText("CI reporter");
-  await dialog
+  await expect(page.locator(".api-key-list")).toContainText("CI reporter");
+  await page
     .getByRole("button", { name: "Delete API key CI reporter", exact: true })
     .click();
-  await expect(dialog.locator(".api-key-list")).toHaveCount(0);
+  await expect(page.locator(".api-key-list")).toHaveCount(0);
 
   const revokedResponse = await page.request.get("/api/v1/report", {
     headers: { "x-api-key": key },
   });
   expect(revokedResponse.status()).toBe(401);
+});
+
+test("account page supports direct deep link, reload, roadmap entry, and flushes workspace drafts before leaving", async ({
+  page,
+}) => {
+  const user = uniqueUser("direct");
+  await createAccount(page, user);
+
+  await page.goto("/account");
+  await expect(
+    page.getByRole("heading", { name: "Account", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".account-summary")).toContainText(user.name);
+  await expect(page.locator(".account-summary")).toContainText(user.email);
+  await expect(
+    page.getByRole("link", { name: "Back to roadmap", exact: true }),
+  ).toHaveAttribute("href", "/");
+
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Account", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".account-summary")).toContainText(user.email);
+
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Settings", exact: true });
+  await expect(dialog).not.toContainText("Sign out");
+  await expect(dialog).not.toContainText("API keys");
+  await dialog
+    .getByRole("button", { name: "Close settings", exact: true })
+    .click();
+
+  await page.getByRole("link", { name: "Back to roadmap", exact: true }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(
+    page.getByRole("heading", { name: "Small steps. Stronger designs." }),
+  ).toBeVisible();
+
+  await page.getByRole("link", { name: "Account", exact: true }).click();
+  await expect(page).toHaveURL(/\/account$/);
+  await expect(
+    page.getByRole("link", { name: "Back to roadmap", exact: true }),
+  ).toBeVisible();
+
+  await page.goto("/practice/bounded-stack");
+  await expect(page.locator(".monaco-editor")).toBeVisible();
+  await replaceCode(
+    page,
+    "package practice\n// FLUSHED_BEFORE_ACCOUNT_NAV\n",
+  );
+  await page.getByRole("link", { name: "Account", exact: true }).click();
+  await expect(page).toHaveURL(/\/account$/);
+  await page
+    .getByRole("link", { name: "Back to practice", exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/practice\/bounded-stack$/);
+  await expect(page.locator(".monaco-editor")).toContainText(
+    "FLUSHED_BEFORE_ACCOUNT_NAV",
+    { timeout: 20000 },
+  );
 });
 
 test("legacy browser progress and drafts import once on first sign-in and clear localStorage", async ({

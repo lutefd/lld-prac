@@ -139,7 +139,7 @@ docker compose start backend
 ```
 
 - **Disable sign-up.** Once your group has created accounts, set `PRACTICE_DISABLE_SIGNUP=true` in `.env` and run `docker compose up -d`. Existing users can still sign in.
-- **Progress report API.** Create an API key from the account menu in the app, then query `/api/v1/report` (optional `?limit=100`, max `1000`). API keys can only read the report and cannot open workspaces or run code.
+- **Progress report API.** Create an API key on the **Account** page (`/account`), then query `/api/v1/report` (optional `?limit=100`, max `1000`). API keys can only read the report and cannot open workspaces or run code.
 
 ```sh
 curl -H "x-api-key: <your-api-key>" https://practice.example.com/api/v1/report

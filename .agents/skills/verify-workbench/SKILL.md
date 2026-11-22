@@ -35,7 +35,7 @@ Read-only. Checks our pid is alive, `/api/health`, 44 exercises from `/api/probl
 - Evidence drive: `node .agents/skills/verify-workbench/scripts/drive.mjs run-tests <exercise-slug> <go|python|typescript|java>` opens `/practice/<slug>`, signs up a fresh user via the UI, clicks **Run tests**, waits for runner output, and writes proof (below).
 - Ad hoc: write a Playwright script that resolves `@playwright/test` from the repo root like `drive.mjs` does.
 
-Stable handles: ARIA names `Run tests`, `Programming language` (label), `Roadmap language` (label), `Settings`, `New file`, `Collapse/Show requirements|file explorer|console`, separators `Resize requirements|file explorer|console`; classes `.monaco-editor`, `.raw-output`, `.file-list`, `.roadmap-exercises li`. Typing into Monaco: click `.monaco-editor`, `ControlOrMeta+a`, `keyboard.insertText(...)`.
+Stable handles: ARIA names `Run tests`, `Programming language` (label), `Roadmap language` (label), `Account` (link), `Settings`, `New file`, `Collapse/Show requirements|file explorer|console`, separators `Resize requirements|file explorer|console`; classes `.monaco-editor`, `.raw-output`, `.file-list`, `.roadmap-exercises li`. Typing into Monaco: click `.monaco-editor`, `ControlOrMeta+a`, `keyboard.insertText(...)`.
 
 ## Evidence
 
