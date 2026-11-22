@@ -20,7 +20,7 @@ Users create and delete extra source and test files, which run with the suite, p
 Preconditions: doctor exits 0.
 
 - **Create, run, persist, scope, validate, delete.** Run `npx playwright test tests/e2e/files.spec.ts`. It creates `helper.go` and `helper_test.go`, runs tests expecting `ADDITIONAL_FILE_OUTPUT`, reloads and expects both in `.file-list`, switches to Python and back, rejects `../escape.go`, and deletes `temp_helper.go`.
-- **Side effect check.** While the workspace page is open, `ls .practice/verify-run/workspaces/*/` shows the created files. The directory is deleted when the user leaves the exercise; durable state is the `practice_draft` row in `.practice/verify-run/workbench.db`, proven by the file returning after reload.
+- **Side effect check.** While the workspace page is open, `ls .practice/verify-run/workspaces/*/` shows the created files. The server removes the workspace directory on close or idle expiry. The draft in `.practice/verify-run/workbench.db` restores the files after reload.
 
 ## Gotchas
 

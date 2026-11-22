@@ -26,7 +26,7 @@ Maintained source for verifying user-facing behavior of Workbench. Read this ind
 ## Features
 
 - [Account](./account.md): sign up, sign in, sign out, server-owned progress and drafts, legacy browser import, API keys and `/api/v1/report`.
-- [Run tests](./run-tests.md): running supplied and personal tests, unlocking levels, draft restore.
+- [Run tests and submit](./run-tests.md): check drafts, record attempts, unlock levels, and restore drafts.
 - [Roadmap](./roadmap.md): ordered catalog, language-specific progress, continue-the-path.
 - [Settings](./settings.md): theme, locale, persistence of preferences.
 - [Panels](./panels.md): resize, keyboard resize, collapse and restore.

@@ -6,7 +6,7 @@ Requirements, file explorer, and console panes resize by drag or keyboard, colla
 
 - `panels-drag` dragging dividers changes sizes and persists.
 - `panels-keyboard` arrow keys resize a focused divider by 10px, `Shift+Arrow` by 40px, `Home`/`End` jump to min/max; double-click resets (requirements 355, explorer 195, console 235).
-- `panels-toolbar` the compact practice toolbar (no `.app-header`) holds the library, roadmap, timer, language, `Account`, `Settings`, and `Run tests` controls; the `Practice timer` setting hides the timer and persists.
+- `panels-toolbar` the compact practice toolbar holds the library, roadmap, timer, language, `Account`, `Settings`, `Run tests`, and `Submit` controls. The `Practice timer` setting hides the timer and persists.
 - `panels-collapse` each pane collapses, stays collapsed after reload, and restores.
 
 ## How to get to it (user POV)
@@ -22,5 +22,5 @@ Preconditions: doctor exits 0.
 ## Gotchas
 
 - Sizes, collapsed state, and timer visibility are saved in localStorage (not per account); use a fresh context.
-- Running tests reopens a collapsed console.
+- **Run tests** and **Submit** reopen a collapsed console.
 - `.editor-status` must stay in the viewport after resizing.

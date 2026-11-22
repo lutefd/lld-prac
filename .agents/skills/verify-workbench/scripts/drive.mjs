@@ -4,7 +4,7 @@ import { createRequire } from "node:module";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 const root = path.resolve(import.meta.dirname, "../../../..");
-const { chromium } = createRequire(path.join(root, "package.json"))("@playwright/test");
+const { chromium, expect } = createRequire(path.join(root, "package.json"))("@playwright/test");
 const [, , action = "run-tests", exercise = "ride-dispatch", language = "go"] = process.argv;
 const envFile = path.join(root, ".practice/verify-run/env");
 if (existsSync(envFile))
@@ -26,7 +26,11 @@ try {
   await page.getByLabel("Password", { exact: true }).fill("password-1234");
   await page.getByRole("button", { name: "Create account", exact: true }).click();
   await page.locator(".monaco-editor").waitFor();
-  if (language !== "go") await page.getByLabel("Programming language").selectOption(language);
+  if (language !== "go") {
+    await page.getByLabel("Programming language").selectOption(language);
+    const implementation = { python: "implementation.py", typescript: "implementation.ts", java: "Implementation.java" };
+    await expect(page.locator(".active-tab")).toContainText(implementation[language]);
+  }
   await page.getByRole("heading", { level: 1 }).first().waitFor();
   await page.screenshot({ path: path.join(out, "1-before.png") });
   await page.getByRole("button", { name: "Run tests", exact: false }).click();
