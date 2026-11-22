@@ -73,6 +73,7 @@ const labels: Record<string, string> = {
   Dark: "Escuro",
   Editor: "Editor",
   Workspace: "Espaço de trabalho",
+  Account: "Conta",
 };
 
 function storedChoice<T extends string>(
@@ -298,9 +299,12 @@ export function usePreferences() {
 
 export function PreferencesControls({
   extra,
+  account,
 }: {
   /** Page-specific settings rendered as an extra section of the modal. */
   extra?: (close: () => void) => ReactNode;
+  /** Account details and API key controls rendered when signed in. */
+  account?: (close: () => void) => ReactNode;
 } = {}) {
   const {
     t,
@@ -373,6 +377,12 @@ export function PreferencesControls({
                 <fieldset className="settings-section">
                   <legend>{t("Workspace")}</legend>
                   {extra(close)}
+                </fieldset>
+              )}
+              {account && (
+                <fieldset className="settings-section">
+                  <legend>{t("Account")}</legend>
+                  {account(close)}
                 </fieldset>
               )}
               <fieldset className="settings-section">

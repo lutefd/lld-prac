@@ -38,9 +38,10 @@
   font-size: 18px;
   font-weight: 550;
 }
-.settings-body {
+.confirm-modal.settings-modal > .settings-body {
   display: flex;
   flex-direction: column;
+  justify-content: flex-start;
   gap: 18px;
   overflow: auto;
   margin: 0 -6px;
